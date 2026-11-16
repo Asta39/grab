@@ -19,10 +19,21 @@ android {
         applicationId = "app.grab.grab"
         // You can update the following values to match your application needs.
         // For more information, see: https://flutter.dev/to/review-gradle-config.
-        minSdk = flutter.minSdkVersion
+        minSdk = 24
         targetSdk = flutter.targetSdkVersion
         versionCode = flutter.versionCode
         versionName = flutter.versionName
+        ndk {
+            abiFilters += listOf("arm64-v8a", "armeabi-v7a", "x86_64")
+        }
+    }
+
+    packaging {
+        jniLibs {
+            useLegacyPackaging = true
+            // youtubedl-android ships zip archives named *.so; they are not ELF files, so don't strip them.
+            keepDebugSymbols += listOf("**/*.zip.so")
+        }
     }
 
     buildTypes {
@@ -42,4 +53,12 @@ kotlin {
 
 flutter {
     source = "../.."
+}
+
+val youtubedlAndroid = "0.18.1"
+
+dependencies {
+    implementation("io.github.junkfood02.youtubedl-android:library:$youtubedlAndroid")
+    implementation("io.github.junkfood02.youtubedl-android:ffmpeg:$youtubedlAndroid")
+    implementation("androidx.core:core-ktx:1.13.1")
 }
