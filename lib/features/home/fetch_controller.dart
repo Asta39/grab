@@ -9,7 +9,7 @@ import '../../data/repositories/download_repository.dart';
 class FetchState {
   const FetchState({
     this.info = const AsyncData(null),
-    this.mode = DownloadMode.videoAndAudio,
+    this.mode = DownloadMode.video,
     this.optionIndex = 0,
     this.subLangs = const {},
     this.embedSubs = false,
@@ -22,11 +22,14 @@ class FetchState {
   final bool embedSubs;
 
   List<QualityOption> get options => info.value?.optionsFor(mode) ?? const [];
-  QualityOption? get selected => options.isEmpty ? null : options[optionIndex.clamp(0, options.length - 1)];
+  QualityOption? get selected => options.isEmpty
+      ? null
+      : options[optionIndex.clamp(0, options.length - 1)];
 
   /// Download is possible when there is something to fetch for this mode.
   bool get canDownload =>
-      info.value != null && (mode != DownloadMode.subtitlesOnly || subLangs.isNotEmpty);
+      info.value != null &&
+      (mode != DownloadMode.subtitlesOnly || subLangs.isNotEmpty);
 
   FetchState copyWith({
     AsyncValue<MediaInfo?>? info,
@@ -34,33 +37,47 @@ class FetchState {
     int? optionIndex,
     Set<String>? subLangs,
     bool? embedSubs,
-  }) =>
-      FetchState(
-        info: info ?? this.info,
-        mode: mode ?? this.mode,
-        optionIndex: optionIndex ?? this.optionIndex,
-        subLangs: subLangs ?? this.subLangs,
-        embedSubs: embedSubs ?? this.embedSubs,
-      );
+  }) => FetchState(
+    info: info ?? this.info,
+    mode: mode ?? this.mode,
+    optionIndex: optionIndex ?? this.optionIndex,
+    subLangs: subLangs ?? this.subLangs,
+    embedSubs: embedSubs ?? this.embedSubs,
+  );
 }
 
 class FetchController extends Notifier<FetchState> {
   @override
-  FetchState build() => const FetchState();
+  FetchState build() =>
+      FetchState(mode: ref.read(settingsProvider).defaultMode);
 
   Future<void> fetch(String url) async {
     url = url.trim();
     if (url.isEmpty) return;
-    state = FetchState(info: const AsyncLoading());
-    final result = await AsyncValue.guard(() => ref.read(engineProvider).fetch(url));
+    final settings = ref.read(settingsProvider);
+    state = FetchState(info: const AsyncLoading(), mode: settings.defaultMode);
+    final result = await AsyncValue.guard(
+      () => ref.read(engineProvider).fetch(url),
+    );
     state = state.copyWith(
       info: result is AsyncError
           ? AsyncError(_friendly(result.error!), result.stackTrace!)
           : result,
     );
+    state = state.copyWith(
+      optionIndex: settings.preferredOptionIndex(state.options),
+    );
   }
 
-  void setMode(DownloadMode m) => state = state.copyWith(mode: m, optionIndex: 0);
+  void setMode(DownloadMode m) {
+    state = state.copyWith(mode: m);
+    state = state.copyWith(
+      optionIndex: ref
+          .read(settingsProvider)
+          .preferredOptionIndex(state.options),
+    );
+  }
+
   void setOption(int i) => state = state.copyWith(optionIndex: i);
   void setEmbed(bool v) => state = state.copyWith(embedSubs: v);
 
@@ -76,23 +93,38 @@ class FetchController extends Notifier<FetchState> {
     if (info == null || !state.canDownload) return null;
     final langs = state.subLangs.toList();
     final auto = info.subtitles.any((t) => t.auto && langs.contains(t.lang));
-    return ref.read(downloadRepositoryProvider).enqueue(DownloadRequest(
-          info: info,
-          mode: state.mode,
-          maxHeight: state.selected?.height,
-          estimatedBytes: state.selected?.bytes,
-          subtitles: SubtitleChoice(langs: langs, includeAuto: auto, embed: state.embedSubs),
-        ));
+    final settings = ref.read(settingsProvider);
+    return ref
+        .read(downloadRepositoryProvider)
+        .enqueue(
+          DownloadRequest(
+            info: info,
+            mode: state.mode,
+            maxHeight: state.selected?.height,
+            estimatedBytes: state.selected?.bytes,
+            subtitles: SubtitleChoice(
+              langs: langs,
+              includeAuto: auto,
+              embed: state.embedSubs,
+            ),
+            container: settings.container,
+            audioFormat: settings.audioFormat,
+          ),
+        );
   }
 
   static Object _friendly(Object e) {
     if (e is PlatformException) {
       final msg = e.message ?? '';
-      final line = msg.split('\n').lastWhere((l) => l.contains('ERROR'), orElse: () => msg);
+      final line = msg
+          .split('\n')
+          .lastWhere((l) => l.contains('ERROR'), orElse: () => msg);
       return line.replaceFirst(RegExp(r'^.*ERROR:\s*'), '').trim();
     }
     return e;
   }
 }
 
-final fetchControllerProvider = NotifierProvider<FetchController, FetchState>(FetchController.new);
+final fetchControllerProvider = NotifierProvider<FetchController, FetchState>(
+  FetchController.new,
+);

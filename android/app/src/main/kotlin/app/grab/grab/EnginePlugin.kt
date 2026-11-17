@@ -86,7 +86,24 @@ class EnginePlugin(private val context: Context, messenger: BinaryMessenger) {
                 pool.execute { runDownload(job) }
                 result.success(null)
             }
-            "cancel" -> result.success(YoutubeDL.getInstance().destroyProcessById(call.argument<String>("id")!!))
+            "extractAudio" -> {
+                val id = call.argument<String>("id")!!
+                val input = call.argument<String>("input")!!
+                val format = call.argument<String>("format") ?: "mp3"
+                val title = call.argument<String>("title") ?: File(input).nameWithoutExtension
+                pool.execute { runExtract(id, File(input), format, title) }
+                result.success(null)
+            }
+            "cancel" -> {
+                val id = call.argument<String>("id")!!
+                val local = processes.remove(id)
+                if (local != null) {
+                    local.destroy()
+                    result.success(true)
+                } else {
+                    result.success(YoutubeDL.getInstance().destroyProcessById(id))
+                }
+            }
             "outputDir" -> result.success(outputDir().absolutePath)
             else -> result.notImplemented()
         }
@@ -152,6 +169,93 @@ class EnginePlugin(private val context: Context, messenger: BinaryMessenger) {
             active.remove(job.id)
             refreshService()
         }
+    }
+
+    /** FFmpeg processes started by [runExtract], so they can be canceled. */
+    private val processes = ConcurrentHashMap<String, Process>()
+
+    /**
+     * Extracts the audio of a file already on the phone with the bundled FFmpeg,
+     * so nothing has to be fetched again. Reports progress like a download.
+     */
+    private fun runExtract(id: String, input: File, format: String, title: String) {
+        emit(mapOf("id" to id, "status" to "starting"))
+        active[id] = title to 0f
+        refreshService()
+        try {
+            ensureReady()
+            if (!input.exists()) throw IllegalStateException("The file is no longer on the phone")
+            val output = uniqueFile(input.parentFile!!, input.nameWithoutExtension, format)
+            val codec = when (format) {
+                "m4a" -> listOf("-c:a", "aac", "-b:a", "192k")
+                "opus" -> listOf("-c:a", "libopus", "-b:a", "160k")
+                "flac" -> listOf("-c:a", "flac")
+                else -> listOf("-c:a", "libmp3lame", "-q:a", "0")
+            }
+            val cmd = listOf(File(context.applicationInfo.nativeLibraryDir, "libffmpeg.so").absolutePath,
+                "-hide_banner", "-nostdin", "-y", "-i", input.absolutePath, "-vn", "-map", "0:a:0") +
+                codec + output.absolutePath
+            val packages = File(context.noBackupFilesDir, "youtubedl-android/packages")
+            val pb = ProcessBuilder(cmd).redirectErrorStream(true)
+            pb.environment()["LD_LIBRARY_PATH"] =
+                "${File(packages, "python/usr/lib").absolutePath}:${File(packages, "ffmpeg/usr/lib").absolutePath}"
+            val process = pb.start()
+            processes[id] = process
+
+            // FFmpeg prints "Duration: 00:01:02.50" once, then "time=00:00:31.20" as it goes.
+            var totalSec = 0.0
+            val log = StringBuilder()
+            process.inputStream.bufferedReader().forEachLine { line ->
+                if (log.length < 8000) log.appendLine(line)
+                Regex("Duration: (\\d+):(\\d+):([\\d.]+)").find(line)?.let { totalSec = seconds(it) }
+                Regex("time=(\\d+):(\\d+):([\\d.]+)").find(line)?.let {
+                    if (totalSec > 0) {
+                        val p = (seconds(it) / totalSec * 100).coerceIn(0.0, 100.0).toFloat()
+                        active[id] = title to p
+                        refreshService()
+                        emit(mapOf("id" to id, "status" to "running", "progress" to p.toDouble(), "line" to line.trim()))
+                    }
+                }
+            }
+            val code = process.waitFor()
+            val canceled = processes.remove(id) == null
+            when {
+                canceled -> { output.delete(); emit(mapOf("id" to id, "status" to "canceled")) }
+                code != 0 -> {
+                    output.delete()
+                    val reason = log.lines().lastOrNull { it.isNotBlank() && !it.startsWith("size=") } ?: "FFmpeg exited with $code"
+                    throw IllegalStateException(if (log.contains("does not contain any stream") || log.contains("matches no streams"))
+                        "This file has no audio track" else reason)
+                }
+                else -> {
+                    MediaScannerConnection.scanFile(context, arrayOf(output.absolutePath), null, null)
+                    emit(mapOf("id" to id, "status" to "done", "progress" to 100.0, "paths" to listOf(output.absolutePath)))
+                    main.post { DownloadService.notifyFinished(context, id, title, ok = true) }
+                }
+            }
+        } catch (e: Throwable) {
+            emit(mapOf("id" to id, "status" to "error", "error" to (e.message ?: e.toString())))
+        } finally {
+            processes.remove(id)
+            active.remove(id)
+            refreshService()
+        }
+    }
+
+    private fun seconds(m: MatchResult): Double {
+        val (h, min, s) = m.destructured
+        return h.toDouble() * 3600 + min.toDouble() * 60 + s.toDouble()
+    }
+
+    /** "name.mp3", or "name (audio).mp3", "name (audio 2).mp3"… if taken. */
+    private fun uniqueFile(dir: File, base: String, ext: String): File {
+        var f = File(dir, "$base.$ext")
+        var n = 1
+        while (f.exists()) {
+            f = File(dir, if (n == 1) "$base (audio).$ext" else "$base (audio $n).$ext")
+            n++
+        }
+        return f
     }
 
     /**

@@ -1,0 +1,13 @@
+<p>Grab turns a link into a file. Paste or share a link from TikTok, YouTube, Instagram, Pinterest, X, Facebook or 1,800+ other sites, choose what you want, and download.</p>
+<ul>
+<li><b>Video + audio, video only, or audio only</b>, with the file size shown before you download</li>
+<li><b>Subtitles</b>: save them as .srt files, put them inside the video, or download subtitles only</li>
+<li><b>Share into Grab</b> from any app, or open Grab with a copied link</li>
+<li><b>Downloads keep going</b> in the background, with progress in the notification bar</li>
+<li><b>Library</b> with search, filters and a built-in player</li>
+<li>MP4, MKV or WEBM video; MP3, M4A, Opus or FLAC audio</li>
+<li><b>Update the engine</b> from Settings when a site changes, without waiting for a new app</li>
+<li>Light and dark themes</li>
+</ul>
+<p>Grab uses <a href="https://github.com/yt-dlp/yt-dlp">yt-dlp</a> and FFmpeg through <a href="https://github.com/yausername/youtubedl-android">youtubedl-android</a>. No accounts, no ads, no tracking.</p>
+<p>Download only what you have the right to save, and respect each site's rules.</p>

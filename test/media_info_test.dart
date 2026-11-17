@@ -16,15 +16,16 @@ void main() {
 
   test('lists video heights best first, adding best audio to the size', () {
     final info = MediaInfo.fromJson('u', youtubeLike);
-    final opts = info.optionsFor(DownloadMode.videoAndAudio);
+    final opts = info.optionsFor(DownloadMode.video);
     expect(opts.map((o) => o.label), ['1080p', '720p', '360p']);
     expect(opts.first.bytes, 41600000);
     expect(opts.last.bytes, 5000000);
   });
 
-  test('video only ignores audio size', () {
+  test('video + audio file adds the extracted audio size', () {
     final info = MediaInfo.fromJson('u', youtubeLike);
-    expect(info.optionsFor(DownloadMode.videoOnly).first.bytes, 40000000);
+    // Video + audio file: the video with sound, plus the extracted audio.
+    expect(info.optionsFor(DownloadMode.videoAndAudio).first.bytes, 41600000 + 1600000);
   });
 
   test('audio only offers one best-audio option', () {
@@ -42,7 +43,7 @@ void main() {
       'duration': 10,
       'tbr': 800,
     });
-    final opts = info.optionsFor(DownloadMode.videoAndAudio);
+    final opts = info.optionsFor(DownloadMode.video);
     expect(opts.single.label, '720p');
     expect(opts.single.bytes, 1000000);
   });
@@ -58,11 +59,12 @@ void main() {
   });
 
   test('builds yt-dlp args per mode', () {
-    expect(buildDownloadArgs(mode: DownloadMode.videoAndAudio, maxHeight: 720),
+    expect(buildDownloadArgs(mode: DownloadMode.video, maxHeight: 720),
         ['-f', 'bv*[height<=720]+ba/b[height<=720]/bv*+ba/b', '-S', 'vcodec:h264,acodec:aac', '--merge-output-format', 'mp4']);
     expect(buildDownloadArgs(mode: DownloadMode.audioOnly),
         ['-f', 'ba/b', '-x', '--audio-format', 'mp3', '--audio-quality', '0']);
-    expect(buildDownloadArgs(mode: DownloadMode.videoOnly).contains('VideoRemuxer:-an'), isTrue);
+    expect(buildDownloadArgs(mode: DownloadMode.videoAndAudio, audioFormat: 'm4a'),
+        containsAllInOrder(['--merge-output-format', 'mp4', '-x', '--audio-format', 'm4a', '--audio-quality', '0', '-k']));
   });
 
   test('formats sizes', () {
@@ -94,7 +96,7 @@ void main() {
 
     test('adds subtitle args to a video download, embedded', () {
       final args = buildDownloadArgs(
-        mode: DownloadMode.videoAndAudio,
+        mode: DownloadMode.video,
         subtitles: const SubtitleChoice(langs: ['en', 'fr'], embed: true),
       );
       expect(args, containsAllInOrder(['--write-subs', '--sub-langs', 'en,fr', '--convert-subs', 'srt', '--embed-subs']));

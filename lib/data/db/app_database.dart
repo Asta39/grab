@@ -44,8 +44,22 @@ class DownloadJobs extends Table {
 
 @DriftDatabase(tables: [DownloadJobs])
 class AppDatabase extends _$AppDatabase {
-  AppDatabase([QueryExecutor? executor]) : super(executor ?? driftDatabase(name: 'grab'));
+  AppDatabase([QueryExecutor? executor])
+    : super(executor ?? driftDatabase(name: 'grab'));
 
   @override
-  int get schemaVersion => 1;
+  int get schemaVersion => 2;
+
+  @override
+  MigrationStrategy get migration => MigrationStrategy(
+    onUpgrade: (m, from, to) async {
+      if (from < 2) {
+        // Modes were redefined: "videoAndAudio" used to mean the video with its sound,
+        // and the "videoOnly" (muted) mode was removed. Both are now plain `video`.
+        await customStatement(
+          "UPDATE download_jobs SET mode = 'video' WHERE mode IN ('videoAndAudio', 'videoOnly')",
+        );
+      }
+    },
+  );
 }

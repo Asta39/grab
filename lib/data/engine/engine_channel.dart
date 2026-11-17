@@ -27,17 +27,18 @@ class EngineEvent {
   final List<String> paths;
   final String? error;
 
-  bool get isFinal => status == 'done' || status == 'error' || status == 'canceled';
+  bool get isFinal =>
+      status == 'done' || status == 'error' || status == 'canceled';
 
   factory EngineEvent.fromMap(Map<Object?, Object?> m) => EngineEvent(
-        id: m['id'] as String,
-        status: m['status'] as String,
-        progress: (m['progress'] as num?)?.toDouble(),
-        eta: (m['eta'] as num?)?.toInt(),
-        line: m['line'] as String?,
-        paths: ((m['paths'] as List?) ?? const []).cast<String>(),
-        error: m['error'] as String?,
-      );
+    id: m['id'] as String,
+    status: m['status'] as String,
+    progress: (m['progress'] as num?)?.toDouble(),
+    eta: (m['eta'] as num?)?.toInt(),
+    line: m['line'] as String?,
+    paths: ((m['paths'] as List?) ?? const []).cast<String>(),
+    error: m['error'] as String?,
+  );
 }
 
 /// Dart side of the Kotlin EnginePlugin (yt-dlp via youtubedl-android).
@@ -46,9 +47,9 @@ class EngineChannel implements DownloadEngine {
   static const _events = EventChannel('grab/engine/progress');
 
   @override
-  late final Stream<EngineEvent> events = _events
-      .receiveBroadcastStream()
-      .map((e) => EngineEvent.fromMap(e as Map<Object?, Object?>));
+  late final Stream<EngineEvent> events = _events.receiveBroadcastStream().map(
+    (e) => EngineEvent.fromMap(e as Map<Object?, Object?>),
+  );
 
   /// Unpacks Python and yt-dlp on first run. Returns the yt-dlp version.
   Future<String?> init() => _methods.invokeMethod<String>('init');
@@ -72,16 +73,29 @@ class EngineChannel implements DownloadEngine {
     String suffix = '',
     String? match,
     String title = 'Download',
-  }) =>
-      _methods.invokeMethod('download', {
-        'id': id,
-        'url': url,
-        'args': args,
-        'suffix': suffix,
-        'match': match,
-        'title': title,
-      });
+  }) => _methods.invokeMethod('download', {
+    'id': id,
+    'url': url,
+    'args': args,
+    'suffix': suffix,
+    'match': match,
+    'title': title,
+  });
+
+  /// Extracts the audio of a saved file with FFmpeg; progress arrives on [events] under [id].
+  Future<void> extractAudio({
+    required String id,
+    required String input,
+    required String format,
+    String? title,
+  }) => _methods.invokeMethod('extractAudio', {
+    'id': id,
+    'input': input,
+    'format': format,
+    'title': title,
+  });
 
   @override
-  Future<bool> cancel(String id) async => await _methods.invokeMethod<bool>('cancel', {'id': id}) ?? false;
+  Future<bool> cancel(String id) async =>
+      await _methods.invokeMethod<bool>('cancel', {'id': id}) ?? false;
 }

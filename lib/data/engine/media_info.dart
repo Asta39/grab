@@ -1,11 +1,27 @@
 import 'dart:convert';
 
 /// What the user wants out of a link.
-enum DownloadMode { videoAndAudio, videoOnly, audioOnly, subtitlesOnly }
+enum DownloadMode {
+  /// The video as is, with its sound. One file.
+  video,
+
+  /// The video with its sound, plus the audio extracted to its own file. Two files.
+  videoAndAudio,
+
+  /// Only the extracted audio.
+  audioOnly,
+
+  /// Only subtitle files.
+  subtitlesOnly,
+}
 
 /// One subtitle language a link offers.
 class SubtitleTrack {
-  const SubtitleTrack({required this.lang, required this.name, this.auto = false});
+  const SubtitleTrack({
+    required this.lang,
+    required this.name,
+    this.auto = false,
+  });
 
   /// yt-dlp language code, e.g. "en", "pt-BR", "en-orig".
   final String lang;
@@ -17,7 +33,11 @@ class SubtitleTrack {
 
 /// Which subtitles to fetch with a download.
 class SubtitleChoice {
-  const SubtitleChoice({this.langs = const [], this.includeAuto = false, this.embed = false});
+  const SubtitleChoice({
+    this.langs = const [],
+    this.includeAuto = false,
+    this.embed = false,
+  });
 
   static const none = SubtitleChoice();
 
@@ -57,7 +77,9 @@ class MediaFormat {
     // yt-dlp leaves codecs null when it doesn't know; treat height as a video hint.
     final hasVideo = vcodec != null ? vcodec != 'none' : height != null;
     final hasAudio = acodec != null ? acodec != 'none' : !hasVideo;
-    var bytes = (j['filesize'] as num?)?.toInt() ?? (j['filesize_approx'] as num?)?.toInt();
+    var bytes =
+        (j['filesize'] as num?)?.toInt() ??
+        (j['filesize_approx'] as num?)?.toInt();
     final tbr = (j['tbr'] as num?)?.toDouble();
     if (bytes == null && tbr != null && duration != null) {
       bytes = (tbr * 1000 / 8 * duration).round();
@@ -137,8 +159,13 @@ class MediaInfo {
     return MediaInfo(
       url: url,
       id: j['id']?.toString(),
-      subtitles: [..._tracks(j['subtitles'], auto: false), ..._tracks(j['automatic_captions'], auto: true)],
-      title: (j['title'] as String?)?.trim().isNotEmpty == true ? j['title'] as String : 'Untitled',
+      subtitles: [
+        ..._tracks(j['subtitles'], auto: false),
+        ..._tracks(j['automatic_captions'], auto: true),
+      ],
+      title: (j['title'] as String?)?.trim().isNotEmpty == true
+          ? j['title'] as String
+          : 'Untitled',
       thumbnail: j['thumbnail'] as String? ?? _lastThumb(j['thumbnails']),
       duration: duration,
       uploader: j['uploader'] as String? ?? j['channel'] as String?,
@@ -157,8 +184,16 @@ class MediaInfo {
       if (code == 'live_chat') return;
       // YouTube lists ~150 machine translations; keep only the original-language track.
       if (auto && !code.endsWith('-orig')) return;
-      final first = list is List && list.isNotEmpty && list.first is Map ? list.first as Map : const {};
-      out.add(SubtitleTrack(lang: code, name: (first['name'] as String?) ?? code, auto: auto));
+      final first = list is List && list.isNotEmpty && list.first is Map
+          ? list.first as Map
+          : const {};
+      out.add(
+        SubtitleTrack(
+          lang: code,
+          name: (first['name'] as String?) ?? code,
+          auto: auto,
+        ),
+      );
     });
     out.sort((a, b) => a.name.compareTo(b.name));
     return out;
@@ -174,14 +209,21 @@ class MediaInfo {
 
   /// Quality choices for [mode], best first.
   List<QualityOption> optionsFor(DownloadMode mode) {
-    if (mode == DownloadMode.subtitlesOnly) return const [QualityOption(label: 'Subtitles (.srt)')];
+    if (mode == DownloadMode.subtitlesOnly) {
+      return const [QualityOption(label: 'Subtitles (.srt)')];
+    }
     final bestAudio = _largest(formats.where((f) => f.hasAudio && !f.hasVideo));
     if (mode == DownloadMode.audioOnly) {
       final src = bestAudio ?? _largest(formats.where((f) => f.hasAudio));
       return [QualityOption(label: 'Best audio', bytes: src?.bytes)];
     }
-    final heights = formats.where((f) => f.hasVideo && f.height != null).map((f) => f.height!).toSet().toList()
-      ..sort((a, b) => b.compareTo(a));
+    final heights =
+        formats
+            .where((f) => f.hasVideo && f.height != null)
+            .map((f) => f.height!)
+            .toSet()
+            .toList()
+          ..sort((a, b) => b.compareTo(a));
     if (heights.isEmpty) return [const QualityOption(label: 'Best available')];
     return [
       for (final h in heights)
@@ -195,15 +237,16 @@ class MediaInfo {
 
   int? _sizeAt(int height, DownloadMode mode, MediaFormat? bestAudio) {
     final atHeight = formats.where((f) => f.hasVideo && f.height == height);
-    if (mode == DownloadMode.videoAndAudio) {
-      final muxed = _largest(atHeight.where((f) => f.hasAudio));
-      final videoOnly = _largest(atHeight.where((f) => !f.hasAudio));
-      if (videoOnly?.bytes != null && bestAudio?.bytes != null) {
-        return videoOnly!.bytes! + bestAudio!.bytes!;
-      }
-      return muxed?.bytes ?? videoOnly?.bytes;
+    final muxed = _largest(atHeight.where((f) => f.hasAudio));
+    final silent = _largest(atHeight.where((f) => !f.hasAudio));
+    final withSound = silent?.bytes != null && bestAudio?.bytes != null
+        ? silent!.bytes! + bestAudio!.bytes!
+        : muxed?.bytes ?? silent?.bytes;
+    if (mode == DownloadMode.videoAndAudio && withSound != null) {
+      // Plus the extracted audio file, roughly the size of the best audio stream.
+      return withSound + (bestAudio?.bytes ?? 0);
     }
-    return (_largest(atHeight.where((f) => !f.hasAudio)) ?? _largest(atHeight))?.bytes;
+    return withSound;
   }
 
   static MediaFormat? _largest(Iterable<MediaFormat> fs) {
@@ -223,7 +266,10 @@ List<String> buildDownloadArgs({
   String audioFormat = 'mp3',
   SubtitleChoice subtitles = SubtitleChoice.none,
 }) {
-  return [..._mediaArgs(mode, maxHeight, container, audioFormat), ..._subtitleArgs(mode, subtitles)];
+  return [
+    ..._mediaArgs(mode, maxHeight, container, audioFormat),
+    ..._subtitleArgs(mode, subtitles),
+  ];
 }
 
 List<String> _subtitleArgs(DownloadMode mode, SubtitleChoice s) {
@@ -232,45 +278,61 @@ List<String> _subtitleArgs(DownloadMode mode, SubtitleChoice s) {
   return [
     '--write-subs',
     if (s.includeAuto) '--write-auto-subs',
-    '--sub-langs', s.langs.join(','),
-    '--convert-subs', 'srt',
+    '--sub-langs',
+    s.langs.join(','),
+    '--convert-subs',
+    'srt',
     if (embed) '--embed-subs',
   ];
 }
 
-List<String> _mediaArgs(DownloadMode mode, int? maxHeight, String container, String audioFormat) {
+List<String> _mediaArgs(
+  DownloadMode mode,
+  int? maxHeight,
+  String container,
+  String audioFormat,
+) {
   final h = maxHeight == null ? '' : '[height<=$maxHeight]';
   switch (mode) {
     case DownloadMode.subtitlesOnly:
       return ['--skip-download'];
+    case DownloadMode.video:
+      return _videoArgs(h, container);
     case DownloadMode.videoAndAudio:
-      return ['-f', 'bv*$h+ba/b$h/bv*+ba/b', ..._compat(container), '--merge-output-format', container];
-    case DownloadMode.videoOnly:
-      // Prefer a video-only stream; if the site only has combined files,
-      // remux and strip the audio track.
-      return [
-        '-f', 'bv*$h/bv*/b$h/b',
-        ..._compat(container),
-        '--remux-video', container,
-        '--ppa', 'VideoRemuxer:-an',
-      ];
+      // Extract the audio from the finished video and keep the video (-k).
+      return [..._videoArgs(h, container), ..._extractArgs(audioFormat), '-k'];
     case DownloadMode.audioOnly:
-      return ['-f', 'ba/b', '-x', '--audio-format', audioFormat, '--audio-quality', '0'];
+      return ['-f', 'ba/b', ..._extractArgs(audioFormat)];
   }
 }
+
+List<String> _videoArgs(String h, String container) => [
+  '-f',
+  'bv*$h+ba/b$h/bv*+ba/b',
+  ..._compat(container),
+  '--merge-output-format',
+  container,
+];
+
+List<String> _extractArgs(String audioFormat) => [
+  '-x',
+  '--audio-format',
+  audioFormat,
+  '--audio-quality',
+  '0',
+];
 
 /// MP4 plays everywhere only with H.264 video and AAC audio; prefer those when they exist.
 List<String> _compat(String container) =>
     container == 'mp4' ? const ['-S', 'vcodec:h264,acodec:aac'] : const [];
 
-/// File-name suffix per mode, so a video-only file never collides with the full video.
-String fileSuffix(DownloadMode mode) => mode == DownloadMode.videoOnly ? ' (video only)' : '';
-
 /// "48 MB", "820 KB", or null.
 String? formatBytes(int? bytes) {
   if (bytes == null || bytes <= 0) return null;
   const mb = 1024 * 1024;
-  if (bytes >= 1024 * mb) return '${(bytes / (1024 * mb)).toStringAsFixed(1)} GB';
+  if (bytes >= 1024 * mb) {
+    return '${(bytes / (1024 * mb)).toStringAsFixed(1)} GB';
+  }
   if (bytes >= mb) return '${(bytes / mb).round()} MB';
   return '${(bytes / 1024).round()} KB';
 }
