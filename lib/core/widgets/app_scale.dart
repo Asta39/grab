@@ -15,14 +15,15 @@ class AppScale extends StatelessWidget {
 
   final Widget child;
 
-  /// Width the screens are designed for.
-  static const designWidth = 400.0;
+  /// Width the screens are designed for. On a ~590 dp phone (small Display
+  /// size setting) 565 gives about 1.05x: a touch larger, never cramped.
+  static const designWidth = 565.0;
 
   /// The zoom applied for a screen of [size].
   static double factorFor(Size size) {
     final shortest = math.min(size.width, size.height);
     if (shortest <= 0) return 1;
-    return (shortest / designWidth).clamp(0.9, 1.6);
+    return (shortest / designWidth).clamp(0.9, 1.4);
   }
 
   @override

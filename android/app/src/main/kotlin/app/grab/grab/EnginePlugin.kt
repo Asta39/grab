@@ -68,10 +68,41 @@ class EnginePlugin(private val context: Context, messenger: BinaryMessenger) {
                 background(result) {
                     ensureReady()
                     val req = YoutubeDLRequest(url)
+                    // Keep the cookies the site hands out, so the preview player
+                    // can open the video the way yt-dlp did (TikTok needs them).
+                    val jar = File(context.cacheDir, "preview-cookies.txt")
+                    jar.writeText("# Netscape HTTP Cookie File\n")
+                    req.addOption("--cookies", jar.absolutePath)
                     req.addOption("--dump-single-json")
                     req.addOption("--no-warnings")
                     req.addOption("--flat-playlist")
-                    YoutubeDL.getInstance().execute(req).out
+                    // Big channels and profiles: list the newest 300 items.
+                    req.addOption("--playlist-items", "1:300")
+                    val json = YoutubeDL.getInstance().execute(req).out
+                    // Hand back the JSON plus the cookie jar, split by a marker line.
+                    json + "\n\u0000GRAB-COOKIES\u0000\n" + (if (jar.exists()) jar.readText() else "")
+                }
+            }
+            // A small low-quality copy in the cache, for sites that refuse direct
+            // playback (TikTok). Returns the file path.
+            "previewFile" -> {
+                val url = call.argument<String>("url")!!
+                background(result) {
+                    ensureReady()
+                    val dir = File(context.cacheDir, "preview").apply {
+                        deleteRecursively()
+                        mkdirs()
+                    }
+                    val req = YoutubeDLRequest(url)
+                    req.addOption("-f", "w[vcodec!=none][acodec!=none][ext=mp4]/w[vcodec!=none][acodec!=none]/w")
+                    req.addOption("-o", File(dir, "preview.%(ext)s").absolutePath)
+                    req.addOption("--no-playlist")
+                    req.addOption("--no-part")
+                    req.addOption("--print", "after_move:filepath")
+                    req.addOption("--no-simulate")
+                    YoutubeDL.getInstance().execute(req).out.lines()
+                        .map { it.trim() }.lastOrNull { it.isNotEmpty() && File(it).exists() }
+                        ?: dir.listFiles()?.firstOrNull()?.absolutePath
                 }
             }
             "download" -> {
@@ -81,6 +112,7 @@ class EnginePlugin(private val context: Context, messenger: BinaryMessenger) {
                     args = call.argument<List<String>>("args") ?: emptyList(),
                     suffix = call.argument<String>("suffix") ?: "",
                     match = call.argument<String>("match"),
+                    template = call.argument<String>("template").orEmpty(),
                     title = call.argument<String>("title") ?: "Download",
                 )
                 pool.execute { runDownload(job) }
@@ -105,6 +137,13 @@ class EnginePlugin(private val context: Context, messenger: BinaryMessenger) {
                 }
             }
             "outputDir" -> result.success(outputDir().absolutePath)
+            "setOutputDir" -> {
+                val base = call.argument<String>("base") ?: "download"
+                val folder = (call.argument<String>("folder") ?: "Grab")
+                    .replace(Regex("[\\\\/:*?\"<>|]"), " ").trim().take(40).ifEmpty { "Grab" }
+                prefs.edit().putString("base", base).putString("folder", folder).apply()
+                result.success(outputDir().absolutePath)
+            }
             else -> result.notImplemented()
         }
     }
@@ -116,6 +155,8 @@ class EnginePlugin(private val context: Context, messenger: BinaryMessenger) {
         val suffix: String,
         val match: String?,
         val title: String,
+        /** yt-dlp output name without extension; blank = "%(title).80B [%(id)s]". */
+        val template: String = "",
     )
 
     @Synchronized
@@ -126,11 +167,20 @@ class EnginePlugin(private val context: Context, messenger: BinaryMessenger) {
         ready = true
     }
 
+    private val prefs by lazy { context.getSharedPreferences("grab_engine", Context.MODE_PRIVATE) }
+
+    /** Where files go: a public folder (Download, Movies or Music) plus a folder name. */
     private fun outputDir(): File {
+        val base = when (prefs.getString("base", "download")) {
+            "movies" -> Environment.DIRECTORY_MOVIES
+            "music" -> Environment.DIRECTORY_MUSIC
+            else -> Environment.DIRECTORY_DOWNLOADS
+        }
+        val name = prefs.getString("folder", "Grab").orEmpty().ifBlank { "Grab" }
         val dir = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-            File(Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS), "Grab")
+            File(Environment.getExternalStoragePublicDirectory(base), name)
         } else {
-            File(context.getExternalFilesDir(Environment.DIRECTORY_DOWNLOADS), "Grab")
+            File(context.getExternalFilesDir(base), name)
         }
         dir.mkdirs()
         return dir
@@ -145,16 +195,26 @@ class EnginePlugin(private val context: Context, messenger: BinaryMessenger) {
             ensureReady()
             val dir = outputDir()
             val req = YoutubeDLRequest(job.url)
-            req.addOption("-o", File(dir, "%(title).80B [%(id)s]${job.suffix}.%(ext)s").absolutePath)
+            val name = job.template.ifBlank { "%(title).80B [%(id)s]" }
+            req.addOption("-o", File(dir, "$name${job.suffix}.%(ext)s").absolutePath)
             req.addOption("--no-mtime")
             req.addOption("--no-playlist")
             req.addOption("--print", "after_move:filepath")
             req.addOption("--no-simulate")
+            // --print turns on quiet mode, which hides the progress lines the
+            // percentage is read from. Ask for them back, one per line.
+            req.addOption("--progress")
+            req.addOption("--newline")
+            // Faster: fetch 4 pieces of a video at once (DASH/HLS), and request
+            // big files in 10 MB chunks, which avoids YouTube's per-request throttling.
+            req.addOption("--concurrent-fragments", "4")
+            req.addOption("--http-chunk-size", "10M")
             for (a in job.args) req.addOption(a)
             val resp = YoutubeDL.getInstance().execute(req, job.id) { progress, eta, line ->
                 active[job.id] = job.title to progress
                 refreshService()
-                emit(mapOf("id" to job.id, "status" to "running", "progress" to progress.toDouble(), "eta" to eta, "line" to line))
+                val speed = speedRegex.find(line ?: "")?.groupValues?.get(1)
+                emit(mapOf("id" to job.id, "status" to "running", "progress" to progress.toDouble(), "eta" to eta, "line" to line, "speed" to speed))
             }
             val paths = collectOutputs(dir, resp.out, job.match, startedAt)
             if (paths.isNotEmpty()) MediaScannerConnection.scanFile(context, paths.toTypedArray(), null, null)
@@ -163,13 +223,27 @@ class EnginePlugin(private val context: Context, messenger: BinaryMessenger) {
         } catch (e: YoutubeDL.CanceledException) {
             emit(mapOf("id" to job.id, "status" to "canceled"))
         } catch (e: Throwable) {
-            emit(mapOf("id" to job.id, "status" to "error", "error" to (e.message ?: e.toString())))
-            main.post { DownloadService.notifyFinished(context, job.id, job.title, ok = false) }
+            val msg = e.message ?: e.toString()
+            emit(mapOf("id" to job.id, "status" to "error", "error" to msg))
+            // Connection drops are retried by the app, so don't announce a failure for them.
+            if (!networkError.containsMatchIn(msg)) {
+                main.post { DownloadService.notifyFinished(context, job.id, job.title, ok = false) }
+            }
         } finally {
             active.remove(job.id)
             refreshService()
         }
     }
+
+    /** "[download]  42.0% of 120.50MiB at 2.30MiB/s ETA 00:41" -> "2.30MiB/s" */
+    private val speedRegex = Regex("at\\s+([\\d.]+\\s*[KMG]?i?B/s)")
+
+    private val networkError = Regex(
+        "Unable to download|timed out|time out|Connection (reset|refused|aborted)|Network is unreachable|" +
+            "No route to host|Temporary failure in name resolution|getaddrinfo|Name or service not known|" +
+            "No address associated|Remote end closed|IncompleteRead|Software caused connection abort|HTTP Error 5\\d\\d|SSL|EOF occurred",
+        RegexOption.IGNORE_CASE,
+    )
 
     /** FFmpeg processes started by [runExtract], so they can be canceled. */
     private val processes = ConcurrentHashMap<String, Process>()
@@ -264,10 +338,15 @@ class EnginePlugin(private val context: Context, messenger: BinaryMessenger) {
      */
     private fun collectOutputs(dir: File, out: String, match: String?, since: Long): List<String> {
         val printed = out.lines().map { it.trim() }.filter { it.isNotEmpty() && File(it).exists() }
-        val extra = if (match.isNullOrEmpty()) emptyList() else
-            dir.listFiles().orEmpty()
-                .filter { it.isFile && it.name.contains(match) && it.lastModified() >= since && !it.name.endsWith(".part") }
-                .map { it.absolutePath }
+        // Subtitles share the media file's name ("<name>.en.srt"), and older names carry "[id]".
+        val keys = (printed.map { File(it).nameWithoutExtension + "." } + listOfNotNull(match)).filter { it.isNotEmpty() }
+        val fresh = dir.listFiles().orEmpty()
+            .filter { it.isFile && it.lastModified() >= since && !it.name.endsWith(".part") }
+        var extra = fresh.filter { f -> keys.any { f.name.contains(it) } }.map { it.absolutePath }
+        if (printed.isEmpty() && extra.isEmpty()) {
+            // Subtitles-only with a name template that has no id: take the new subtitle files.
+            extra = fresh.filter { it.extension in setOf("srt", "vtt", "ass") }.map { it.absolutePath }
+        }
         return (printed + extra).distinct()
     }
 

@@ -1,3 +1,4 @@
+import 'package:animations/animations.dart';
 import 'package:flutter/material.dart';
 
 /// Pop design tokens (style 8 on the mockup canvas).
@@ -160,6 +161,12 @@ ThemeData popTheme({Brightness brightness = Brightness.light}) {
   return base.copyWith(
     extensions: [c],
     scaffoldBackgroundColor: c.bg,
+    // Pages that don't grow out of a card (see Morph) zoom in and fade, the same feel.
+    pageTransitionsTheme: PageTransitionsTheme(
+      builders: {
+        for (final p in TargetPlatform.values) p: _PopPageTransitions(c.bg),
+      },
+    ),
     textTheme: base.textTheme.apply(bodyColor: c.text, displayColor: c.text),
     iconTheme: IconThemeData(color: c.text),
     appBarTheme: AppBarTheme(
@@ -183,10 +190,13 @@ ThemeData popTheme({Brightness brightness = Brightness.light}) {
       backgroundColor: c.soft,
       selectedColor: c.strong,
       checkmarkColor: c.onStrong,
-      labelStyle: TextStyle(
-        fontFamily: Pop.font,
-        fontWeight: FontWeight.w600,
-        color: c.text,
+      // Label turns yellow on the ink "selected" fill, ink otherwise.
+      labelStyle: WidgetStateTextStyle.resolveWith(
+        (states) => TextStyle(
+          fontFamily: Pop.font,
+          fontWeight: FontWeight.w600,
+          color: states.contains(WidgetState.selected) ? c.onStrong : c.text,
+        ),
       ),
       secondaryLabelStyle: TextStyle(
         fontFamily: Pop.font,
@@ -215,4 +225,26 @@ ThemeData popTheme({Brightness brightness = Brightness.light}) {
     snackBarTheme: const SnackBarThemeData(behavior: SnackBarBehavior.floating),
     dividerTheme: DividerThemeData(color: c.track),
   );
+}
+
+/// Zoom-and-fade between pages; instant when the system asks for no animations.
+class _PopPageTransitions extends PageTransitionsBuilder {
+  const _PopPageTransitions(this.fill);
+
+  final Color fill;
+
+  @override
+  Widget buildTransitions<T>(
+    PageRoute<T> route,
+    BuildContext context,
+    Animation<double> animation,
+    Animation<double> secondaryAnimation,
+    Widget child,
+  ) {
+    if (MediaQuery.disableAnimationsOf(context)) return child;
+    return SharedAxisPageTransitionsBuilder(
+      transitionType: SharedAxisTransitionType.scaled,
+      fillColor: fill,
+    ).buildTransitions(route, context, animation, secondaryAnimation, child);
+  }
 }

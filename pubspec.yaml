@@ -7,7 +7,9 @@ environment:
   sdk: ^3.12.2
 
 dependencies:
+  animations: ^3.0.0
   confetti: ^0.8.0
+  connectivity_plus: ^7.3.2
   device_info_plus: ^13.3.0
   drift: ^2.35.4
   drift_flutter: ^0.3.1
@@ -15,7 +17,8 @@ dependencies:
     sdk: flutter
   flutter_animate: ^4.5.2
   flutter_riverpod: ^3.5.0
-  liquid_glass_renderer: 0.2.0-dev.4
+  just_audio: ^0.10.6
+  just_audio_background: ^0.0.1-beta.17
   package_info_plus: ^10.2.2
   path: ^1.9.1
   path_provider: ^2.1.6
@@ -35,6 +38,9 @@ dev_dependencies:
 
 flutter:
   uses-material-design: true
+  assets:
+    - assets/art/
+    - assets/brand/icon.png
   fonts:
     - family: Outfit
       fonts:

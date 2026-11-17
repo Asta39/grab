@@ -105,3 +105,79 @@ String? fileSizeLabel(String path) {
     return null;
   }
 }
+
+/// How the Library is ordered.
+enum LibrarySort {
+  newest('Newest'),
+  oldest('Oldest'),
+  largest('Largest'),
+  site('Site A–Z');
+
+  const LibrarySort(this.label);
+  final String label;
+}
+
+/// Orders [items]. [sizeOf] gives a file's size in bytes (0 when unknown).
+List<LibraryItem> sortLibrary(
+  List<LibraryItem> items,
+  LibrarySort sort, {
+  required int Function(String path) sizeOf,
+}) {
+  final epoch = DateTime.fromMillisecondsSinceEpoch(0);
+  int byDate(LibraryItem a, LibraryItem b) =>
+      (b.finishedAt ?? epoch).compareTo(a.finishedAt ?? epoch);
+  final out = [...items];
+  switch (sort) {
+    case LibrarySort.newest:
+      out.sort(byDate);
+    case LibrarySort.oldest:
+      out.sort((a, b) => byDate(b, a));
+    case LibrarySort.largest:
+      final sizes = {for (final i in items) i.path: sizeOf(i.path)};
+      out.sort((a, b) => sizes[b.path]!.compareTo(sizes[a.path]!));
+    case LibrarySort.site:
+      out.sort((a, b) {
+        final c = siteName(
+          a.site,
+        ).toLowerCase().compareTo(siteName(b.site).toLowerCase());
+        return c != 0 ? c : byDate(a, b);
+      });
+  }
+  return out;
+}
+
+/// Friendly platform name from yt-dlp's extractor key ("TikTok", "YouTube", ...).
+String siteName(String? site) {
+  if (site == null || site.isEmpty) return 'Other';
+  final s = site.toLowerCase();
+  for (final (key, name) in const [
+    ('youtube', 'YouTube'),
+    ('tiktok', 'TikTok'),
+    ('instagram', 'Instagram'),
+    ('pinterest', 'Pinterest'),
+    ('twitter', 'X'),
+    ('facebook', 'Facebook'),
+    ('reddit', 'Reddit'),
+    ('vimeo', 'Vimeo'),
+    ('soundcloud', 'SoundCloud'),
+    ('twitch', 'Twitch'),
+  ]) {
+    if (s.contains(key)) return name;
+  }
+  // "GenericIE" style keys: drop a trailing "IE" or "Tab" and keep the rest.
+  return site.replaceFirst(RegExp(r'(IE|Tab|User|Playlist)$'), '');
+}
+
+/// Splits sorted [items] by platform, keeping each group's order; biggest group first.
+List<(String, List<LibraryItem>)> groupBySite(List<LibraryItem> items) {
+  final groups = <String, List<LibraryItem>>{};
+  for (final i in items) {
+    (groups[siteName(i.site)] ??= []).add(i);
+  }
+  final out = [for (final e in groups.entries) (e.key, e.value)];
+  out.sort((a, b) {
+    final c = b.$2.length.compareTo(a.$2.length);
+    return c != 0 ? c : a.$1.compareTo(b.$1);
+  });
+  return out;
+}

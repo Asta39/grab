@@ -5,9 +5,12 @@ import 'package:path/path.dart' as p;
 
 import '../../app/providers.dart';
 import '../../core/theme/pop_theme.dart';
+import '../../core/widgets/morph.dart';
+import '../../core/widgets/dock_inset.dart';
 import '../../core/widgets/pop_widgets.dart';
 import '../../data/db/app_database.dart';
 import '../../data/engine/media_info.dart';
+import '../../data/repositories/download_repository.dart';
 import '../detail/download_detail_screen.dart';
 
 /// Downloads: active and waiting jobs on top, history below.
@@ -30,16 +33,21 @@ class DownloadsScreen extends ConsumerWidget {
             final waiting = all
                 .where((j) => j.status == JobStatus.queued)
                 .length;
-            final active = all
-                .where(
-                  (j) =>
-                      j.status == JobStatus.running ||
-                      j.status == JobStatus.queued,
-                )
-                .toList();
+            final paused = all
+                .where((j) => j.status == JobStatus.paused)
+                .length;
+            final offline = all
+                .where((j) => j.status == JobStatus.waiting)
+                .length;
+            final active = all.where((j) => _isActive(j.status)).toList();
             final history = all.where((j) => !active.contains(j)).toList();
             return ListView(
-              padding: const EdgeInsets.fromLTRB(24, 12, 24, 120),
+              padding: EdgeInsets.fromLTRB(
+                24,
+                12,
+                24,
+                DockInset.listBottom(context),
+              ),
               children: [
                 const SizedBox(height: 6),
                 const Text(
@@ -54,7 +62,12 @@ class DownloadsScreen extends ConsumerWidget {
                 Text(
                   active.isEmpty
                       ? 'Nothing running'
-                      : '$running active · $waiting waiting',
+                      : [
+                          '$running active',
+                          if (waiting > 0) '$waiting waiting',
+                          if (paused > 0) '$paused paused',
+                          if (offline > 0) '$offline need connection',
+                        ].join(' · '),
                   style: TextStyle(color: context.pop.muted, fontSize: 15),
                 ),
                 const SizedBox(height: 20),
@@ -74,6 +87,12 @@ class DownloadsScreen extends ConsumerWidget {
     );
   }
 }
+
+bool _isActive(JobStatus s) =>
+    s == JobStatus.running ||
+    s == JobStatus.queued ||
+    s == JobStatus.paused ||
+    s == JobStatus.waiting;
 
 class _Empty extends StatelessWidget {
   const _Empty();
@@ -127,6 +146,8 @@ class _JobCard extends ConsumerWidget {
         '${job.maxHeight}p',
       if (job.subLangs.isNotEmpty && mode != DownloadMode.subtitlesOnly)
         'subs ${job.subLangs}',
+      if (job.trimStart != null || job.trimEnd != null)
+        'clip ${clockLabel(job.trimStart ?? 0)}–${job.trimEnd == null ? 'end' : clockLabel(job.trimEnd!)}',
     ].join(' · ');
   }
 
@@ -134,23 +155,28 @@ class _JobCard extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final repo = ref.read(downloadRepositoryProvider);
     final files = job.paths.isEmpty ? const <String>[] : job.paths.split('\n');
-    final active =
-        job.status == JobStatus.running || job.status == JobStatus.queued;
+    final active = _isActive(job.status);
+    final pct = job.progress.toStringAsFixed(0);
     final still = Pop.reduceMotion(context);
 
     final status = switch (job.status) {
       JobStatus.queued => 'Waiting',
       JobStatus.running when job.progress >= 100 => 'Finishing…',
-      JobStatus.running =>
-        '${job.progress.toStringAsFixed(0)}%${job.eta != null && job.eta! > 0 ? ' · ${_eta(job.eta!)} left' : ''}',
+      JobStatus.running => [
+        job.progress <= 0 ? 'Starting…' : '${job.progress.toStringAsFixed(0)}%',
+        ?ref.watch(speedsProvider).value?[job.id],
+        if (job.eta != null && job.eta! > 0) '${_eta(job.eta!)} left',
+      ].join(' · '),
       JobStatus.done =>
         files.isEmpty ? 'Saved' : files.map(p.basename).join('\n'),
       JobStatus.failed => job.error ?? 'Failed',
       JobStatus.canceled => 'Canceled',
+      JobStatus.paused => job.progress > 0 ? 'Paused at $pct%' : 'Paused',
+      JobStatus.waiting =>
+        'Connection lost · trying again by itself (${job.attempts} of ${DownloadRepository.maxAutoRetries})',
     };
 
     final card = Container(
-      margin: const EdgeInsets.only(bottom: 12),
       padding: const EdgeInsets.fromLTRB(12, 12, 8, 14),
       decoration: BoxDecoration(
         color: job.status == JobStatus.running
@@ -167,28 +193,41 @@ class _JobCard extends ConsumerWidget {
                 seed: job.id,
                 url: job.thumbnail,
                 audio: _mode == DownloadMode.audioOnly,
-                size: 56,
+                size: 96,
               ),
-              const SizedBox(width: 14),
+              const SizedBox(width: 16),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
                       job.title,
-                      maxLines: 1,
+                      maxLines: 2,
                       overflow: TextOverflow.ellipsis,
                       style: const TextStyle(
                         fontWeight: FontWeight.w700,
-                        fontSize: 15,
+                        fontSize: 16,
+                        height: 1.2,
                       ),
                     ),
-                    const SizedBox(height: 2),
-                    Text(
-                      [job.site, _what].whereType<String>().join(' · '),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: TextStyle(color: context.pop.muted, fontSize: 13),
+                    const SizedBox(height: 6),
+                    if (job.site != null)
+                      Text(
+                        job.site!,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                          color: context.pop.muted,
+                          fontSize: 13,
+                        ),
+                      ),
+                    const SizedBox(height: 8),
+                    PopTag(
+                      _what,
+                      // The running card is soft yellow itself.
+                      color: job.status == JobStatus.running
+                          ? context.pop.bg
+                          : null,
                     ),
                   ],
                 ),
@@ -197,6 +236,8 @@ class _JobCard extends ConsumerWidget {
                 job: job,
                 onCancel: () => repo.cancel(job.id),
                 onRetry: () => repo.retry(job.id),
+                onPause: () => repo.pause(job.id),
+                onResume: () => repo.unpause(job.id),
               ),
             ],
           ),
@@ -205,7 +246,7 @@ class _JobCard extends ConsumerWidget {
             Padding(
               padding: const EdgeInsets.only(right: 4),
               child: PopProgressBar(
-                value: job.status == JobStatus.queued
+                value: job.status == JobStatus.queued && job.progress == 0
                     ? null
                     : job.progress / 100,
                 track: job.status == JobStatus.running
@@ -233,6 +274,18 @@ class _JobCard extends ConsumerWidget {
                     ),
                   ),
                 ),
+                if (active && job.status != JobStatus.running)
+                  GestureDetector(
+                    onTap: () => repo.cancel(job.id),
+                    child: const Text(
+                      'Cancel',
+                      style: TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w700,
+                        decoration: TextDecoration.underline,
+                      ),
+                    ),
+                  ),
                 if (!active)
                   GestureDetector(
                     onTap: () => repo.remove(job.id),
@@ -251,13 +304,21 @@ class _JobCard extends ConsumerWidget {
         ],
       ),
     );
-    final tappable = active
-        ? card
-        : GestureDetector(
-            onTap: () => openDownload(context, job.id),
-            behavior: HitTestBehavior.opaque,
-            child: card,
-          );
+    // Finished cards grow into their detail page when tapped.
+    final tappable = Padding(
+      padding: const EdgeInsets.only(bottom: 14),
+      child: active
+          ? card
+          : Morph(
+              color: context.pop.card,
+              page: (_) => DownloadDetailScreen(jobId: job.id),
+              builder: (context, open) => GestureDetector(
+                onTap: open,
+                behavior: HitTestBehavior.opaque,
+                child: card,
+              ),
+            ),
+    );
     return still
         ? tappable
         : tappable
@@ -275,21 +336,40 @@ class _StatusIcon extends StatelessWidget {
     required this.job,
     required this.onCancel,
     required this.onRetry,
+    required this.onPause,
+    required this.onResume,
   });
 
   final DownloadJob job;
   final VoidCallback onCancel;
   final VoidCallback onRetry;
+  final VoidCallback onPause;
+  final VoidCallback onResume;
 
   @override
   Widget build(BuildContext context) {
     final Widget child = switch (job.status) {
-      JobStatus.queued || JobStatus.running => PopIconButton(
-        key: const ValueKey('cancel'),
-        icon: Icons.close_rounded,
-        tooltip: 'Cancel download',
+      JobStatus.running => PopIconButton(
+        key: const ValueKey('pause'),
+        icon: Icons.pause_rounded,
+        tooltip: 'Pause download',
         background: context.pop.bg,
-        onPressed: onCancel,
+        onPressed: onPause,
+      ),
+      JobStatus.queued || JobStatus.waiting => PopIconButton(
+        key: const ValueKey('pause-waiting'),
+        icon: Icons.pause_rounded,
+        tooltip: 'Pause download',
+        background: context.pop.bg,
+        onPressed: onPause,
+      ),
+      JobStatus.paused => PopIconButton(
+        key: const ValueKey('resume'),
+        icon: Icons.play_arrow_rounded,
+        tooltip: 'Resume download',
+        background: context.pop.strong,
+        foreground: context.pop.onStrong,
+        onPressed: onResume,
       ),
       JobStatus.done => SizedBox(
         key: const ValueKey('done'),

@@ -26,7 +26,8 @@ Future<bool> ensureDownloadPermissions(
         context,
         icon: Icons.folder_rounded,
         title: 'Allow Grab to save files',
-        body: 'Grab saves your downloads to Download/Grab on this phone.',
+        body:
+            'Grab saves your downloads to a folder on this phone (Download/Grab unless you pick another in Settings).',
         permanentlyDenied: storage.isPermanentlyDenied,
       );
       if (!go) return false;

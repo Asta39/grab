@@ -1,9 +1,10 @@
 import 'dart:math' as math;
+import 'dart:ui' show ImageFilter;
 
 import 'package:flutter/material.dart';
-import 'package:liquid_glass_renderer/liquid_glass_renderer.dart';
 
 import '../theme/pop_theme.dart';
+import '../utils/audio_art.dart';
 import 'gooey.dart';
 import '../../core/utils/haptics.dart';
 
@@ -115,12 +116,14 @@ class PopIconButton extends StatelessWidget {
     required this.tooltip,
     required this.onPressed,
     this.background,
+    this.foreground,
   });
 
   final IconData icon;
   final String tooltip;
   final VoidCallback? onPressed;
   final Color? background;
+  final Color? foreground;
 
   @override
   Widget build(BuildContext context) {
@@ -134,7 +137,7 @@ class PopIconButton extends StatelessWidget {
             },
       style: IconButton.styleFrom(
         backgroundColor: background ?? context.pop.field,
-        foregroundColor: context.pop.text,
+        foregroundColor: foreground ?? context.pop.text,
         fixedSize: const Size(48, 48),
       ),
       icon: Icon(icon),
@@ -293,6 +296,7 @@ class PopThumb extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    if (audio && AudioArt.instance != null) return _art(context);
     final glyph = Icon(
       audio ? Icons.music_note_rounded : Icons.play_arrow_rounded,
       color: Pop.ink,
@@ -309,16 +313,79 @@ class PopThumb extends StatelessWidget {
         height: size,
         child: url == null || audio
             ? fallback
-            : Image.network(
-                url!,
-                fit: BoxFit.cover,
-                errorBuilder: (_, _, _) => fallback,
-                frameBuilder: (_, child, frame, sync) =>
-                    sync || frame != null ? child : fallback,
+            // Decode at the size it is shown, not the full 1280px source:
+            // much less memory and no decode hitches while scrolling or morphing.
+            : LayoutBuilder(
+                builder: (context, box) {
+                  final w = box.maxWidth.isFinite ? box.maxWidth : 400.0;
+                  return Image.network(
+                    url!,
+                    fit: BoxFit.cover,
+                    cacheWidth: (w * MediaQuery.devicePixelRatioOf(context))
+                        .round()
+                        .clamp(64, 1280),
+                    gaplessPlayback: true,
+                    errorBuilder: (_, _, _) => fallback,
+                    frameBuilder: (_, child, frame, sync) =>
+                        sync || frame != null ? child : fallback,
+                  );
+                },
               ),
       ),
     );
   }
+
+  /// Audio: a line-drawn illustration from the shuffled deck, ink on soft
+  /// yellow (yellow on dark brown in dark mode).
+  Widget _art(BuildContext context) {
+    final dark = Theme.of(context).brightness == Brightness.dark;
+    final i = AudioArt.instance!.indexFor(seed);
+    return ClipRRect(
+      borderRadius: radius,
+      child: Container(
+        width: size,
+        height: size,
+        color: dark ? const Color(0xFF2B2612) : const Color(0xFFFFF3C4),
+        padding: const EdgeInsets.all(6),
+        child: Image.asset(
+          AudioArt.assetFor(i),
+          fit: BoxFit.contain,
+          color: dark ? Pop.yellow : Pop.ink,
+          filterQuality: FilterQuality.medium,
+          semanticLabel: 'Audio',
+        ),
+      ),
+    );
+  }
+}
+
+/// Small pill label, e.g. "MP4 · 1080p".
+class PopTag extends StatelessWidget {
+  const PopTag(this.text, {super.key, this.color});
+
+  final String text;
+
+  /// Background; defaults to soft yellow. Pass another on yellow cards.
+  final Color? color;
+
+  @override
+  Widget build(BuildContext context) => DecoratedBox(
+    decoration: ShapeDecoration(
+      shape: const StadiumBorder(),
+      color: color ?? context.pop.soft,
+    ),
+    child: Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+      child: Text(
+        text,
+        style: TextStyle(
+          fontSize: 12,
+          fontWeight: FontWeight.w700,
+          color: context.pop.text,
+        ),
+      ),
+    ),
+  );
 }
 
 /// Small uppercase section label.
@@ -393,88 +460,87 @@ class _PopTabBarState extends State<PopTabBar> {
       minimum: const EdgeInsets.fromLTRB(16, 0, 16, 12),
       child: SizedBox(
         height: 68,
-        child: LiquidGlassLayer(
-          settings: LiquidGlassSettings(
-            thickness: 18,
-            blur: 6,
-            glassColor: dark
-                ? const Color(0x55202020)
-                : const Color(0x66FFFFFF),
-            lightIntensity: dark ? 0.6 : 1.2,
-            saturation: 1.3,
-          ),
-          child: LiquidGlass(
-            shape: const LiquidRoundedSuperellipse(borderRadius: 34),
-            glassContainsChild: false,
-            child: LayoutBuilder(
-              builder: (context, box) {
-                const pad = 6.0;
-                final w = (box.maxWidth - pad * 2) / n;
-                double left(int i) => pad + w * widget.index;
-                return Stack(
-                  children: [
-                    // Dock outline so the glass edge reads on any background.
-                    Positioned.fill(
-                      child: DecoratedBox(
-                        decoration: ShapeDecoration(
-                          shape: RoundedSuperellipseBorder(
-                            borderRadius: BorderRadius.circular(34),
-                            side: BorderSide(
-                              color: dark ? Colors.white12 : Colors.black12,
-                            ),
-                          ),
-                        ),
-                      ),
-                    ),
-                    // Gooey active blob.
-                    Positioned.fill(
-                      child: Gooey(
-                        blur: 7,
-                        child: Stack(
-                          children: [
-                            TweenAnimationBuilder<double>(
-                              tween: Tween(end: left(widget.index)),
-                              duration: still
-                                  ? Duration.zero
-                                  : (movingRight ? slow : fast),
-                              curve: Curves.easeOutCubic,
-                              builder: (_, l, _) =>
-                                  TweenAnimationBuilder<double>(
-                                    tween: Tween(end: left(widget.index) + w),
-                                    duration: still
-                                        ? Duration.zero
-                                        : (movingRight ? fast : slow),
-                                    curve: Curves.easeOutBack,
-                                    builder: (_, r, _) => Positioned(
-                                      left: math.min(l, r - 40),
-                                      width: math.max(r - l, 40),
-                                      top: pad,
-                                      bottom: pad,
-                                      child: const DecoratedBox(
-                                        decoration: ShapeDecoration(
-                                          shape: StadiumBorder(),
-                                          color: Pop.yellow,
+        // Frosted glass: the page blurs through, with a tint, a top highlight
+        // and a hairline edge, clipped to the dock's soft superellipse.
+        child: ClipRSuperellipse(
+          borderRadius: BorderRadius.circular(34),
+          child: BackdropFilter(
+            filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
+            child: DecoratedBox(
+              decoration: ShapeDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.topCenter,
+                  end: Alignment.bottomCenter,
+                  colors: dark
+                      ? const [Color(0xB32A2A2A), Color(0x99161616)]
+                      : const [Color(0xCCFFFFFF), Color(0x99F4F4F4)],
+                ),
+                shape: RoundedSuperellipseBorder(
+                  borderRadius: BorderRadius.circular(34),
+                  side: BorderSide(
+                    color: dark ? Colors.white24 : Colors.black12,
+                  ),
+                ),
+              ),
+              child: LayoutBuilder(
+                builder: (context, box) {
+                  const pad = 6.0;
+                  // The active tab is wider so its label fits: 16 parts vs 10.
+                  final unit = (box.maxWidth - pad * 2) / (10 * (n - 1) + 16);
+                  final w = unit * 16;
+                  double left(int i) => pad + unit * 10 * i;
+                  return Stack(
+                    children: [
+                      // Gooey active blob.
+                      Positioned.fill(
+                        child: Gooey(
+                          blur: 7,
+                          child: Stack(
+                            children: [
+                              TweenAnimationBuilder<double>(
+                                tween: Tween(end: left(widget.index)),
+                                duration: still
+                                    ? Duration.zero
+                                    : (movingRight ? slow : fast),
+                                curve: Curves.easeOutCubic,
+                                builder: (_, l, _) =>
+                                    TweenAnimationBuilder<double>(
+                                      tween: Tween(end: left(widget.index) + w),
+                                      duration: still
+                                          ? Duration.zero
+                                          : (movingRight ? fast : slow),
+                                      curve: Curves.easeOutBack,
+                                      builder: (_, r, _) => Positioned(
+                                        left: math.min(l, r - 40),
+                                        width: math.max(r - l, 40),
+                                        top: pad,
+                                        bottom: pad,
+                                        child: const DecoratedBox(
+                                          decoration: ShapeDecoration(
+                                            shape: StadiumBorder(),
+                                            color: Pop.yellow,
+                                          ),
                                         ),
                                       ),
                                     ),
-                                  ),
-                            ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                      Padding(
+                        padding: const EdgeInsets.all(pad),
+                        child: Row(
+                          crossAxisAlignment: CrossAxisAlignment.stretch,
+                          children: [
+                            for (var i = 0; i < n; i++) _tab(context, i, dark),
                           ],
                         ),
                       ),
-                    ),
-                    Padding(
-                      padding: const EdgeInsets.all(pad),
-                      child: Row(
-                        crossAxisAlignment: CrossAxisAlignment.stretch,
-                        children: [
-                          for (var i = 0; i < n; i++) _tab(context, i, dark),
-                        ],
-                      ),
-                    ),
-                  ],
-                );
-              },
+                    ],
+                  );
+                },
+              ),
             ),
           ),
         ),
@@ -487,6 +553,7 @@ class _PopTabBarState extends State<PopTabBar> {
     final on = i == widget.index;
     final idle = dark ? const Color(0xFFBDBDBD) : const Color(0xFF3A3A3A);
     return Expanded(
+      flex: on ? 16 : 10,
       child: Semantics(
         selected: on,
         button: true,
