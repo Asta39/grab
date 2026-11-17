@@ -36,7 +36,7 @@ jobs:
         run: gh release upload "${{ github.event.release.tag_name }}" grab-windows-x64.zip --clobber
 
   macos:
-    runs-on: macos-latest
+    runs-on: macos-15
     steps:
       - uses: actions/checkout@v4
       - uses: subosito/flutter-action@v2
