@@ -1,0 +1,164 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Grab — Paste a link. Get the file.</title>
+  <meta name="description" content="Grab is a free, open-source app that saves video, audio and subtitles from TikTok, YouTube, Instagram, Pinterest and 1,800+ sites. No account, no ads, no tracking.">
+  <meta name="theme-color" content="#FFD84D">
+  <meta name="color-scheme" content="light">
+  <meta property="og:title" content="Grab — Paste a link. Get the file.">
+  <meta property="og:description" content="Free, open-source downloader for TikTok, YouTube, Instagram, Pinterest and 1,800+ sites.">
+  <meta property="og:image" content="assets/banner.png">
+  <link rel="icon" href="assets/favicon.png">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <header class="nav">
+    <div class="nav-inner">
+      <a class="brand" href="#top"><img src="assets/icon.png" alt="" width="32" height="32"> Grab</a>
+      <nav aria-label="Main">
+        <a href="#features">Features</a>
+        <a href="#privacy">Privacy</a>
+        <a href="#faq">FAQ</a>
+        <a class="pill small" href="#download">Download</a>
+      </nav>
+    </div>
+  </header>
+
+  <main id="top">
+    <!-- Hero -->
+    <section class="hero">
+      <p class="eyebrow reveal">Free · Open source · No ads</p>
+      <h1 class="display reveal">Paste a link.<br>Get the file.</h1>
+      <p class="lede reveal">Save video, audio and subtitles from TikTok, YouTube, Instagram, Pinterest and 1,800+ other sites. Beautifully simple, on your phone and soon on your computer.</p>
+      <div class="cta reveal">
+        <a class="pill primary" id="hero-download" href="#download">Download Grab</a>
+        <a class="pill ghost" href="https://github.com/Asta39/grab">View on GitHub</a>
+      </div>
+      <p class="fine reveal" id="hero-note">Android 7.0 and newer. Windows and macOS coming soon.</p>
+      <div class="hero-shot reveal">
+        <img src="assets/banner.png" alt="Grab on three phones: Home, trimming a clip, and the Library" width="1100" height="690">
+      </div>
+    </section>
+
+    <!-- Big number -->
+    <section class="statement bg-yellow">
+      <div class="wrap">
+        <p class="huge reveal">1,800+</p>
+        <p class="statement-text reveal">sites. One paste.<br><span class="soft">TikTok, YouTube, Instagram, Pinterest, X, Facebook, Vimeo, SoundCloud and the long tail, powered by yt-dlp.</span></p>
+      </div>
+    </section>
+
+    <!-- Feature rows -->
+    <section class="feature" id="features">
+      <div class="wrap split">
+        <div class="copy reveal">
+          <p class="eyebrow">Preview and trim</p>
+          <h2 class="headline">Keep only<br>the part you love.</h2>
+          <p class="body">Play the video before you save it. Turn on <b>Save only a part</b> and drag the yellow ends of the filmstrip. You see the exact frame you're cutting at, and Grab downloads just that clip.</p>
+        </div>
+        <div class="shot reveal"><img src="assets/trim.png" alt="The trim bar under a playing preview" loading="lazy" width="630" height="1320"></div>
+      </div>
+    </section>
+
+    <section class="feature bg-ink">
+      <div class="wrap split reverse">
+        <div class="copy reveal">
+          <p class="eyebrow">Downloads that don't give up</p>
+          <h2 class="headline">Pause. Lose signal.<br>Pick up where<br>you left off.</h2>
+          <p class="body">Live percent, speed and time left. Pause any download and resume it later. If the connection drops, Grab waits and tries again by itself.</p>
+        </div>
+        <div class="shot reveal"><img src="assets/downloads.png" alt="Downloads with live progress" loading="lazy" width="630" height="1320"></div>
+      </div>
+    </section>
+
+    <section class="feature bg-yellow">
+      <div class="wrap split reverse">
+        <div class="copy reveal">
+          <p class="eyebrow">Your library</p>
+          <h2 class="headline">Everything you saved,<br>beautifully kept.</h2>
+          <p class="body">Sort by date, size or site. Group by platform. Pick several to share or delete. Audio gets one of fifty line-drawn covers, and plays in the background with lock-screen controls.</p>
+        </div>
+        <div class="shot reveal"><img src="assets/library.png" alt="The Library grouped by platform" loading="lazy" width="630" height="1320"></div>
+      </div>
+    </section>
+
+    <!-- Grid -->
+    <section class="grid-section">
+      <div class="wrap">
+        <h2 class="headline center reveal">And all the little things.</h2>
+        <div class="grid">
+          <article class="tile reveal"><span class="ico" aria-hidden="true">🎧</span><h3>Audio only</h3><p>MP3, M4A, Opus or FLAC, or the video plus its soundtrack as a separate file.</p></article>
+          <article class="tile reveal"><span class="ico" aria-hidden="true">💬</span><h3>Subtitles</h3><p>Save as .srt files or embed them right into the video.</p></article>
+          <article class="tile reveal"><span class="ico" aria-hidden="true">📚</span><h3>Playlists and profiles</h3><p>Paste a playlist or channel and pick exactly which items to grab.</p></article>
+          <article class="tile reveal"><span class="ico" aria-hidden="true">🔔</span><h3>Ringtone maker</h3><p>Cut up to 40 seconds of any file and set it as your ringtone.</p></article>
+          <article class="tile reveal"><span class="ico" aria-hidden="true">⚡</span><h3>One-tap grab</h3><p>Share to Grab, use the Quick Settings tile, or tap “Grab it” on a copied link.</p></article>
+          <article class="tile reveal"><span class="ico" aria-hidden="true">🔄</span><h3>Always current</h3><p>The engine updates itself daily, and new versions install over the old one.</p></article>
+        </div>
+      </div>
+    </section>
+
+    <!-- Privacy -->
+    <section class="statement bg-ink" id="privacy">
+      <div class="wrap">
+        <h2 class="display reveal">No account.<br>No ads.<br>No tracking.</h2>
+        <p class="statement-text reveal"><span class="soft">Grab talks only to the sites you download from, and to GitHub when it checks for updates. Your downloads and history never leave your device. The code is open for anyone to read.</span></p>
+      </div>
+    </section>
+
+    <!-- Download -->
+    <section class="download bg-yellow" id="download">
+      <div class="wrap">
+        <h2 class="headline center reveal">Get Grab.</h2>
+        <p class="lede center reveal">Free forever. GPL-3.0 licensed.</p>
+        <div class="platforms">
+          <article class="platform reveal" data-os="android">
+            <span class="badge">Available now</span>
+            <h3>Android</h3>
+            <p>Android 7.0 and newer. Most phones need the arm64 build.</p>
+            <a class="pill primary" href="https://github.com/Asta39/grab/releases/latest">Download APK</a>
+          </article>
+          <article class="platform reveal" data-os="mac">
+            <span class="badge soon">Coming soon</span>
+            <h3>macOS</h3>
+            <p>Apple silicon and Intel. The same Grab, built for your Mac.</p>
+            <a class="pill ghost" href="https://github.com/Asta39/grab/releases">Watch releases</a>
+          </article>
+          <article class="platform reveal" data-os="windows">
+            <span class="badge soon">Coming soon</span>
+            <h3>Windows</h3>
+            <p>Windows 10 and 11. Paste a link, get the file.</p>
+            <a class="pill ghost" href="https://github.com/Asta39/grab/releases">Watch releases</a>
+          </article>
+        </div>
+      </div>
+    </section>
+
+    <!-- FAQ -->
+    <section class="faq" id="faq">
+      <div class="wrap narrow">
+        <h2 class="headline center reveal">Questions.</h2>
+        <details class="reveal"><summary>Is Grab really free?</summary><p>Yes. No subscriptions, no ads, no paid tiers. It's open-source software under the GPL-3.0 licence.</p></details>
+        <details class="reveal"><summary>Why isn't it on the Play Store?</summary><p>Google Play doesn't allow apps that download from YouTube. Grab is published on GitHub, with F-Droid on the way. Updates install from inside the app.</p></details>
+        <details class="reveal"><summary>Which sites work?</summary><p>Anything <a href="https://github.com/yt-dlp/yt-dlp/blob/master/supportedsites.md">yt-dlp supports</a>: over 1,800 sites. Some private or age-restricted content needs a login and won't work yet.</p></details>
+        <details class="reveal"><summary>A link stopped working. What now?</summary><p>Sites change often. Grab updates its engine daily; you can also tap <b>Check for engine update</b> in Settings. Still stuck? <a href="https://github.com/Asta39/grab/issues/new">Report it</a> with the link.</p></details>
+        <details class="reveal"><summary>Is downloading videos allowed?</summary><p>Download only what you have the right to save, and respect creators and each site's terms. Grab isn't affiliated with any site it supports.</p></details>
+      </div>
+    </section>
+  </main>
+
+  <footer class="footer">
+    <div class="wrap footer-inner">
+      <a class="brand" href="#top"><img src="assets/icon.png" alt="" width="28" height="28"> Grab</a>
+      <p>Free and open source under GPL-3.0. Built on <a href="https://github.com/yt-dlp/yt-dlp">yt-dlp</a> and <a href="https://ffmpeg.org">FFmpeg</a>.</p>
+      <a href="https://github.com/Asta39/grab">GitHub</a>
+    </div>
+  </footer>
+
+  <script src="script.js"></script>
+</body>
+</html>
