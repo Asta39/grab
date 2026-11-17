@@ -13,6 +13,7 @@ class EngineEvent {
     this.line,
     this.paths = const [],
     this.error,
+    this.speed,
   });
 
   final String id;
@@ -27,6 +28,9 @@ class EngineEvent {
   final List<String> paths;
   final String? error;
 
+  /// Download speed as yt-dlp prints it, e.g. "2.30MiB/s".
+  final String? speed;
+
   bool get isFinal =>
       status == 'done' || status == 'error' || status == 'canceled';
 
@@ -38,6 +42,7 @@ class EngineEvent {
     line: m['line'] as String?,
     paths: ((m['paths'] as List?) ?? const []).cast<String>(),
     error: m['error'] as String?,
+    speed: m['speed'] as String?,
   );
 }
 
@@ -60,7 +65,14 @@ class EngineChannel implements DownloadEngine {
 
   Future<MediaInfo> fetch(String url) async {
     final raw = await _methods.invokeMethod<String>('fetch', {'url': url});
-    return MediaInfo.fromJsonString(url, raw!);
+    const marker = '\n\u0000GRAB-COOKIES\u0000\n';
+    final at = raw!.indexOf(marker);
+    if (at < 0) return MediaInfo.fromJsonString(url, raw);
+    return MediaInfo.fromJsonString(
+      url,
+      raw.substring(0, at),
+      cookieJar: raw.substring(at + marker.length),
+    );
   }
 
   /// [suffix] is added to the file name so different modes don't overwrite each other.
@@ -73,6 +85,7 @@ class EngineChannel implements DownloadEngine {
     String suffix = '',
     String? match,
     String title = 'Download',
+    String template = '',
   }) => _methods.invokeMethod('download', {
     'id': id,
     'url': url,
@@ -80,7 +93,16 @@ class EngineChannel implements DownloadEngine {
     'suffix': suffix,
     'match': match,
     'title': title,
+    'template': template,
   });
+
+  /// Downloads a small preview copy of [url] into the cache; returns its path.
+  Future<String?> previewFile(String url) =>
+      _methods.invokeMethod<String>('previewFile', {'url': url});
+
+  /// Base folder ("download", "movies" or "music") and folder name for new files.
+  Future<String?> setOutputDir(String base, String folder) => _methods
+      .invokeMethod<String>('setOutputDir', {'base': base, 'folder': folder});
 
   /// Extracts the audio of a saved file with FFmpeg; progress arrives on [events] under [id].
   Future<void> extractAudio({

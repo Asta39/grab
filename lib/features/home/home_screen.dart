@@ -6,21 +6,26 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../app/providers.dart';
 import '../../core/theme/pop_theme.dart';
 import '../../core/utils/links.dart';
-import '../../core/widgets/gooey.dart';
+import '../../core/widgets/morph.dart';
+import '../../core/widgets/dock_inset.dart';
 import '../../core/widgets/pop_widgets.dart';
 import '../../data/db/app_database.dart';
 import '../../data/engine/media_info.dart';
 import '../detail/download_detail_screen.dart';
 import 'fetch_controller.dart';
 import 'format_sheet.dart';
+import 'playlist_sheet.dart';
 import '../../core/utils/haptics.dart';
 
 /// Home: paste or share a link, fetch it, then choose a format in the sheet.
 class HomeScreen extends ConsumerStatefulWidget {
-  const HomeScreen({super.key, this.onQueued});
+  const HomeScreen({super.key, this.onQueued, this.onFetch});
 
   /// Called after a download is queued (the shell switches to Downloads).
   final VoidCallback? onQueued;
+
+  /// Called whenever a link starts fetching, however it got here.
+  final ValueChanged<String>? onFetch;
 
   @override
   ConsumerState<HomeScreen> createState() => HomeScreenState();
@@ -54,11 +59,20 @@ class HomeScreenState extends ConsumerState<HomeScreen> {
     fetchLink(link);
   }
 
+  /// Format sheet for one item; the picker for a playlist or profile.
+  Future<void> _choose(MediaInfo info) async {
+    final queued = info.isPlaylist && info.entries.isNotEmpty
+        ? await showPlaylistSheet(context, info)
+        : await showFormatSheet(context);
+    if (queued) widget.onQueued?.call();
+  }
+
   void _fetch() {
     FocusScope.of(context).unfocus();
     final link = extractLink(_url.text) ?? _url.text.trim();
     if (link.isEmpty) return;
     if (link != _url.text) _url.text = link;
+    widget.onFetch?.call(link);
     ref.read(fetchControllerProvider.notifier).fetch(link);
   }
 
@@ -71,7 +85,7 @@ class HomeScreenState extends ConsumerState<HomeScreen> {
     ) async {
       if (prev is AsyncLoading && next is AsyncData && next.value != null) {
         Haptics.light();
-        if (await showFormatSheet(context)) widget.onQueued?.call();
+        await _choose(next.value!);
       }
     });
 
@@ -88,7 +102,12 @@ class HomeScreenState extends ConsumerState<HomeScreen> {
       body: SafeArea(
         bottom: false,
         child: ListView(
-          padding: const EdgeInsets.fromLTRB(24, 12, 24, 120),
+          padding: EdgeInsets.fromLTRB(
+            24,
+            12,
+            24,
+            DockInset.listBottom(context),
+          ),
           children: [
             Row(
               children: [
@@ -114,19 +133,6 @@ class HomeScreenState extends ConsumerState<HomeScreen> {
               child: Stack(
                 clipBehavior: Clip.none,
                 children: [
-                  // Quiet yellow metaballs drifting behind the headline.
-                  Positioned(
-                    right: -48,
-                    top: -36,
-                    width: 210,
-                    height: 190,
-                    child: MetaballsBackground(
-                      count: 4,
-                      color: Theme.of(context).brightness == Brightness.dark
-                          ? const Color(0xFF6B5A16)
-                          : context.pop.soft,
-                    ),
-                  ),
                   const Text(
                         'Paste a link.\nGet the file.',
                         style: TextStyle(
@@ -178,12 +184,7 @@ class HomeScreenState extends ConsumerState<HomeScreen> {
               ],
               AsyncData(:final value?) => [
                 const SizedBox(height: 24),
-                _ReadyCard(
-                  info: value,
-                  onOpen: () async {
-                    if (await showFormatSheet(context)) widget.onQueued?.call();
-                  },
-                ),
+                _ReadyCard(info: value, onOpen: () => _choose(value)),
               ],
               _ => const <Widget>[],
             },
@@ -380,9 +381,11 @@ class _ReadyCard extends StatelessWidget {
                     ),
                   ),
                   const SizedBox(height: 4),
-                  const Text(
-                    'Choose format',
-                    style: TextStyle(fontWeight: FontWeight.w600),
+                  Text(
+                    info.isPlaylist
+                        ? 'Pick from ${info.entries.length} items'
+                        : 'Choose format',
+                    style: const TextStyle(fontWeight: FontWeight.w600),
                   ),
                 ],
               ),
@@ -459,46 +462,56 @@ class _RecentRow extends StatelessWidget {
         if (job.maxHeight != null) '${job.maxHeight}p',
       ].join(' · '),
     };
-    return GestureDetector(
-      onTap: () => openDownload(context, job.id),
-      behavior: HitTestBehavior.opaque,
-      child: Container(
-        margin: const EdgeInsets.only(bottom: 10),
-        padding: const EdgeInsets.all(10),
-        decoration: BoxDecoration(
-          color: context.pop.card,
-          borderRadius: Pop.cardRadius,
-        ),
-        child: Row(
-          children: [
-            PopThumb(seed: job.id, url: job.thumbnail, audio: audio, size: 52),
-            const SizedBox(width: 14),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    job.title,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(
-                      fontWeight: FontWeight.w700,
-                      fontSize: 15,
-                    ),
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 14),
+      child: Morph(
+        color: context.pop.card,
+        page: (_) => DownloadDetailScreen(jobId: job.id),
+        builder: (context, open) => InkWell(
+          onTap: open,
+          child: Padding(
+            padding: const EdgeInsets.all(12),
+            child: Row(
+              children: [
+                PopThumb(
+                  seed: job.id,
+                  url: job.thumbnail,
+                  audio: audio,
+                  size: 96,
+                ),
+                const SizedBox(width: 16),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        job.title,
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(
+                          fontWeight: FontWeight.w700,
+                          fontSize: 16,
+                          height: 1.2,
+                        ),
+                      ),
+                      const SizedBox(height: 6),
+                      if (job.site != null)
+                        Text(
+                          job.site!,
+                          style: TextStyle(
+                            color: context.pop.muted,
+                            fontSize: 13,
+                          ),
+                        ),
+                      const SizedBox(height: 8),
+                      PopTag(what),
+                    ],
                   ),
-                  const SizedBox(height: 2),
-                  Text(
-                    [job.site, what].whereType<String>().join(' · '),
-                    style: TextStyle(color: context.pop.muted, fontSize: 13),
-                  ),
-                ],
-              ),
+                ),
+                const Icon(Icons.chevron_right_rounded, semanticLabel: 'Open'),
+              ],
             ),
-            const Padding(
-              padding: EdgeInsets.only(right: 6),
-              child: Icon(Icons.chevron_right_rounded, semanticLabel: 'Open'),
-            ),
-          ],
+          ),
         ),
       ),
     );

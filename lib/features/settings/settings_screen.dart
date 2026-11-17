@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -7,10 +9,15 @@ import 'package:permission_handler/permission_handler.dart';
 import '../../app/providers.dart';
 import '../../core/theme/pop_theme.dart';
 import '../../core/utils/permissions.dart';
+import '../../core/widgets/dock_inset.dart';
 import '../../core/widgets/pop_widgets.dart';
 import '../../core/widgets/toasts.dart';
+import '../../data/db/app_database.dart';
 import '../../data/engine/media_info.dart';
 import '../../data/settings/app_settings.dart';
+import '../library/library_items.dart';
+import '../library/library_screen.dart';
+import 'about_screen.dart';
 
 final _outputDirProvider = FutureProvider<String?>(
   (ref) => ref.watch(engineProvider).outputDir(),
@@ -59,7 +66,12 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
       body: SafeArea(
         bottom: false,
         child: ListView(
-          padding: const EdgeInsets.fromLTRB(24, 18, 24, 120),
+          padding: EdgeInsets.fromLTRB(
+            24,
+            18,
+            24,
+            DockInset.listBottom(context),
+          ),
           children: [
             const Text(
               'Settings',
@@ -75,12 +87,13 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
               children: [
                 _Row(
                   label: 'Save to',
-                  value: folder == null ? '…' : _shortPath(folder),
-                  onTap: () => popToast(
-                    'Files go to Download/Grab',
-                    icon: Icons.folder_rounded,
-                    detail: 'Open them from Library, or any file manager.',
-                  ),
+                  value: folder == null ? s.savePath : _shortPath(folder),
+                  onTap: () => _editFolder(s),
+                ),
+                _Row(
+                  label: 'File names',
+                  value: previewFileName(s.fileTemplate),
+                  onTap: () => _editTemplate(s),
                 ),
                 _Row(
                   label: 'Default mode',
@@ -158,6 +171,9 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
               ],
             ),
             const SizedBox(height: 16),
+            const PopSection('Storage'),
+            const _StorageGroup(),
+            const SizedBox(height: 16),
             const PopSection('Engine'),
             _Group(
               children: [
@@ -226,6 +242,9 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                 _Row(
                   label: 'Grab',
                   value: app == null ? '' : 'v${app.version}',
+                  onTap: () => Navigator.of(context).push(
+                    MaterialPageRoute(builder: (_) => const AboutScreen()),
+                  ),
                 ),
                 _Row(
                   label: 'Open-source licenses',
@@ -293,8 +312,237 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
   };
 
   static String _shortPath(String p) {
-    final i = p.indexOf('/Download/');
-    return i >= 0 ? p.substring(i + 1) : p;
+    for (final b in ['/Download/', '/Movies/', '/Music/']) {
+      final i = p.indexOf(b);
+      if (i >= 0) return p.substring(i + 1);
+    }
+    return p;
+  }
+
+  Future<void> _editFolder(AppSettings s) async {
+    final result = await showModalBottomSheet<(String, String)>(
+      context: context,
+      isScrollControlled: true,
+      useSafeArea: true,
+      builder: (_) => _FolderSheet(base: s.saveBase, folder: s.saveFolder),
+    );
+    if (result == null) return;
+    final (base, folder) = result;
+    await ref
+        .read(settingsProvider.notifier)
+        .update((x) => x.copyWith(saveBase: base, saveFolder: folder));
+    final path = await ref.read(engineProvider).setOutputDir(base, folder);
+    ref.invalidate(_outputDirProvider);
+    popToast(
+      'New downloads go to ${_shortPath(path ?? '$base/$folder')}',
+      icon: Icons.folder_rounded,
+      detail: 'Files already saved stay where they are.',
+    );
+  }
+
+  Future<void> _editTemplate(AppSettings s) async {
+    final t = await showModalBottomSheet<String>(
+      context: context,
+      isScrollControlled: true,
+      useSafeArea: true,
+      builder: (_) => _TemplateSheet(initial: s.fileTemplate),
+    );
+    if (t == null) return;
+    await ref
+        .read(settingsProvider.notifier)
+        .update((x) => x.copyWith(fileTemplate: t));
+  }
+}
+
+class _FolderSheet extends StatefulWidget {
+  const _FolderSheet({required this.base, required this.folder});
+
+  final String base;
+  final String folder;
+
+  @override
+  State<_FolderSheet> createState() => _FolderSheetState();
+}
+
+class _FolderSheetState extends State<_FolderSheet> {
+  late var _base = widget.base;
+  late final _name = TextEditingController(text: widget.folder);
+
+  @override
+  void dispose() {
+    _name.dispose();
+    super.dispose();
+  }
+
+  String get _clean =>
+      _name.text.replaceAll(RegExp(r'[\\/:*?"<>|]'), ' ').trim();
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: EdgeInsets.fromLTRB(
+        24,
+        0,
+        24,
+        20 + MediaQuery.viewInsetsOf(context).bottom,
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          const Text(
+            'Save to',
+            textAlign: TextAlign.center,
+            style: TextStyle(fontSize: 20, fontWeight: FontWeight.w800),
+          ),
+          const SizedBox(height: 16),
+          PopSegmented<String>(
+            values: AppSettings.saveBases,
+            labels: [
+              for (final b in AppSettings.saveBases) AppSettings.baseLabel(b),
+            ],
+            selected: _base,
+            onChanged: (b) => setState(() => _base = b),
+          ),
+          const SizedBox(height: 14),
+          TextField(
+            controller: _name,
+            onChanged: (_) => setState(() {}),
+            textCapitalization: TextCapitalization.words,
+            decoration: const InputDecoration(
+              labelText: 'Folder name',
+              prefixIcon: Icon(Icons.folder_rounded),
+            ),
+          ),
+          const SizedBox(height: 10),
+          Text(
+            'Saves to ${AppSettings.baseLabel(_base)}/${_clean.isEmpty ? 'Grab' : _clean}. '
+            'Android lets apps save straight into Download, Movies and Music.',
+            style: TextStyle(color: context.pop.muted, fontSize: 13),
+          ),
+          const SizedBox(height: 18),
+          PopButton(
+            label: 'Save',
+            onPressed: () => Navigator.pop(context, (
+              _base,
+              _clean.isEmpty ? 'Grab' : _clean,
+            )),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _TemplateSheet extends StatefulWidget {
+  const _TemplateSheet({required this.initial});
+
+  final String initial;
+
+  @override
+  State<_TemplateSheet> createState() => _TemplateSheetState();
+}
+
+class _TemplateSheetState extends State<_TemplateSheet> {
+  late final _t = TextEditingController(text: widget.initial);
+
+  @override
+  void dispose() {
+    _t.dispose();
+    super.dispose();
+  }
+
+  void _insert(String token) {
+    final sel = _t.selection;
+    final text = _t.text;
+    final at = sel.isValid ? sel.start : text.length;
+    final end = sel.isValid ? sel.end : text.length;
+    _t.value = TextEditingValue(
+      text: text.replaceRange(at, end, token),
+      selection: TextSelection.collapsed(offset: at + token.length),
+    );
+    setState(() {});
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: EdgeInsets.fromLTRB(
+        24,
+        0,
+        24,
+        20 + MediaQuery.viewInsetsOf(context).bottom,
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          const Text(
+            'File names',
+            textAlign: TextAlign.center,
+            style: TextStyle(fontSize: 20, fontWeight: FontWeight.w800),
+          ),
+          const SizedBox(height: 16),
+          TextField(
+            controller: _t,
+            onChanged: (_) => setState(() {}),
+            decoration: const InputDecoration(
+              labelText: 'Template',
+              prefixIcon: Icon(Icons.text_fields_rounded),
+            ),
+          ),
+          const SizedBox(height: 10),
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: [
+              for (final token in fileNameTokens.keys)
+                ActionChip(label: Text(token), onPressed: () => _insert(token)),
+            ],
+          ),
+          const SizedBox(height: 14),
+          Container(
+            padding: const EdgeInsets.all(14),
+            decoration: BoxDecoration(
+              color: context.pop.soft,
+              borderRadius: Pop.thumbRadius,
+            ),
+            child: Row(
+              children: [
+                const Icon(Icons.insert_drive_file_rounded),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Text(
+                    previewFileName(_t.text),
+                    style: const TextStyle(fontWeight: FontWeight.w700),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            'Leaving out {id} gives cleaner names, but two videos with the same title will clash.',
+            style: TextStyle(color: context.pop.muted, fontSize: 12),
+          ),
+          const SizedBox(height: 18),
+          Row(
+            children: [
+              TextButton(
+                onPressed: () => Navigator.pop(context, defaultFileTemplate),
+                child: const Text('Reset'),
+              ),
+              const Spacer(),
+              PopButton(
+                label: 'Save',
+                expand: false,
+                onPressed: () => Navigator.pop(context, _t.text.trim()),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
   }
 }
 
@@ -371,6 +619,139 @@ class _Row extends StatelessWidget {
           ),
         ),
       ),
+    );
+  }
+}
+
+/// "2.3 GB used" by saved files, split by kind, plus clearing failed downloads.
+class _StorageGroup extends ConsumerWidget {
+  const _StorageGroup();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final items = ref.watch(libraryProvider);
+    final jobs = ref.watch(jobsProvider).value ?? const <DownloadJob>[];
+    final failed = jobs
+        .where(
+          (j) => j.status == JobStatus.failed || j.status == JobStatus.canceled,
+        )
+        .length;
+    final byKind = <LibraryKind, int>{};
+    for (final i in items) {
+      int size;
+      try {
+        size = File(i.path).lengthSync();
+      } catch (_) {
+        size = 0;
+      }
+      byKind[i.kind] = (byKind[i.kind] ?? 0) + size;
+    }
+    final total = byKind.values.fold(0, (a, b) => a + b);
+    const kinds = [
+      (LibraryKind.video, 'Video', Pop.ink),
+      (LibraryKind.audio, 'Audio', Color(0xFFE0A800)),
+      (LibraryKind.subtitles, 'Subtitles', Color(0xFF9FD8FF)),
+    ];
+
+    return _Group(
+      children: [
+        Padding(
+          padding: const EdgeInsets.fromLTRB(16, 16, 16, 14),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                total == 0 ? 'Nothing saved yet' : '${formatBytes(total)} used',
+                style: const TextStyle(
+                  fontSize: 24,
+                  fontWeight: FontWeight.w800,
+                ),
+              ),
+              Text(
+                '${items.length} ${items.length == 1 ? 'file' : 'files'} in ${ref.watch(settingsProvider).savePath}',
+                style: TextStyle(color: context.pop.muted),
+              ),
+              if (total > 0) ...[
+                const SizedBox(height: 12),
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(6),
+                  child: SizedBox(
+                    height: 12,
+                    child: Row(
+                      children: [
+                        for (final (k, _, color) in kinds)
+                          if ((byKind[k] ?? 0) > 0)
+                            Expanded(
+                              flex: ((byKind[k]! / total) * 1000).round().clamp(
+                                8,
+                                1000,
+                              ),
+                              child: ColoredBox(
+                                color:
+                                    Theme.of(context).brightness ==
+                                            Brightness.dark &&
+                                        color == Pop.ink
+                                    ? Pop.yellow
+                                    : color,
+                              ),
+                            ),
+                      ],
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 10),
+                Wrap(
+                  spacing: 14,
+                  runSpacing: 4,
+                  children: [
+                    for (final (k, label, color) in kinds)
+                      if ((byKind[k] ?? 0) > 0)
+                        Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Container(
+                              width: 10,
+                              height: 10,
+                              decoration: ShapeDecoration(
+                                shape: const CircleBorder(),
+                                color:
+                                    Theme.of(context).brightness ==
+                                            Brightness.dark &&
+                                        color == Pop.ink
+                                    ? Pop.yellow
+                                    : color,
+                              ),
+                            ),
+                            const SizedBox(width: 6),
+                            Text(
+                              '$label ${formatBytes(byKind[k])}',
+                              style: const TextStyle(fontSize: 13),
+                            ),
+                          ],
+                        ),
+                  ],
+                ),
+              ],
+            ],
+          ),
+        ),
+        _Row(
+          label: 'Clear failed downloads',
+          value: failed == 0 ? 'None' : '$failed',
+          onTap: failed == 0
+              ? null
+              : () async {
+                  final n = await ref
+                      .read(downloadRepositoryProvider)
+                      .clearFailed();
+                  popToast(
+                    'Cleared $n from history',
+                    icon: Icons.cleaning_services_rounded,
+                    detail: 'Saved files are not touched.',
+                  );
+                },
+        ),
+      ],
     );
   }
 }

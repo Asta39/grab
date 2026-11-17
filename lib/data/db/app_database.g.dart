@@ -162,6 +162,40 @@ class $DownloadJobsTable extends DownloadJobs
     type: DriftSqlType.int,
     requiredDuringInsert: false,
   );
+  static const VerificationMeta _trimStartMeta = const VerificationMeta(
+    'trimStart',
+  );
+  @override
+  late final GeneratedColumn<double> trimStart = GeneratedColumn<double>(
+    'trim_start',
+    aliasedName,
+    true,
+    type: DriftSqlType.double,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _trimEndMeta = const VerificationMeta(
+    'trimEnd',
+  );
+  @override
+  late final GeneratedColumn<double> trimEnd = GeneratedColumn<double>(
+    'trim_end',
+    aliasedName,
+    true,
+    type: DriftSqlType.double,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _attemptsMeta = const VerificationMeta(
+    'attempts',
+  );
+  @override
+  late final GeneratedColumn<int> attempts = GeneratedColumn<int>(
+    'attempts',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(0),
+  );
   @override
   late final GeneratedColumnWithTypeConverter<JobStatus, String> status =
       GeneratedColumn<String>(
@@ -249,6 +283,9 @@ class $DownloadJobsTable extends DownloadJobs
     subAuto,
     subEmbed,
     estimatedBytes,
+    trimStart,
+    trimEnd,
+    attempts,
     status,
     progress,
     eta,
@@ -364,6 +401,24 @@ class $DownloadJobsTable extends DownloadJobs
         ),
       );
     }
+    if (data.containsKey('trim_start')) {
+      context.handle(
+        _trimStartMeta,
+        trimStart.isAcceptableOrUnknown(data['trim_start']!, _trimStartMeta),
+      );
+    }
+    if (data.containsKey('trim_end')) {
+      context.handle(
+        _trimEndMeta,
+        trimEnd.isAcceptableOrUnknown(data['trim_end']!, _trimEndMeta),
+      );
+    }
+    if (data.containsKey('attempts')) {
+      context.handle(
+        _attemptsMeta,
+        attempts.isAcceptableOrUnknown(data['attempts']!, _attemptsMeta),
+      );
+    }
     if (data.containsKey('progress')) {
       context.handle(
         _progressMeta,
@@ -467,6 +522,18 @@ class $DownloadJobsTable extends DownloadJobs
         DriftSqlType.int,
         data['${effectivePrefix}estimated_bytes'],
       ),
+      trimStart: attachedDatabase.typeMapping.read(
+        DriftSqlType.double,
+        data['${effectivePrefix}trim_start'],
+      ),
+      trimEnd: attachedDatabase.typeMapping.read(
+        DriftSqlType.double,
+        data['${effectivePrefix}trim_end'],
+      ),
+      attempts: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}attempts'],
+      )!,
       status: $DownloadJobsTable.$converterstatus.fromSql(
         attachedDatabase.typeMapping.read(
           DriftSqlType.string,
@@ -528,6 +595,13 @@ class DownloadJob extends DataClass implements Insertable<DownloadJob> {
   final bool subAuto;
   final bool subEmbed;
   final int? estimatedBytes;
+
+  /// Only save this part of the media, in seconds.
+  final double? trimStart;
+  final double? trimEnd;
+
+  /// Automatic retries after connection problems.
+  final int attempts;
   final JobStatus status;
   final double progress;
   final int? eta;
@@ -552,6 +626,9 @@ class DownloadJob extends DataClass implements Insertable<DownloadJob> {
     required this.subAuto,
     required this.subEmbed,
     this.estimatedBytes,
+    this.trimStart,
+    this.trimEnd,
+    required this.attempts,
     required this.status,
     required this.progress,
     this.eta,
@@ -587,6 +664,13 @@ class DownloadJob extends DataClass implements Insertable<DownloadJob> {
     if (!nullToAbsent || estimatedBytes != null) {
       map['estimated_bytes'] = Variable<int>(estimatedBytes);
     }
+    if (!nullToAbsent || trimStart != null) {
+      map['trim_start'] = Variable<double>(trimStart);
+    }
+    if (!nullToAbsent || trimEnd != null) {
+      map['trim_end'] = Variable<double>(trimEnd);
+    }
+    map['attempts'] = Variable<int>(attempts);
     {
       map['status'] = Variable<String>(
         $DownloadJobsTable.$converterstatus.toSql(status),
@@ -631,6 +715,13 @@ class DownloadJob extends DataClass implements Insertable<DownloadJob> {
       estimatedBytes: estimatedBytes == null && nullToAbsent
           ? const Value.absent()
           : Value(estimatedBytes),
+      trimStart: trimStart == null && nullToAbsent
+          ? const Value.absent()
+          : Value(trimStart),
+      trimEnd: trimEnd == null && nullToAbsent
+          ? const Value.absent()
+          : Value(trimEnd),
+      attempts: Value(attempts),
       status: Value(status),
       progress: Value(progress),
       eta: eta == null && nullToAbsent ? const Value.absent() : Value(eta),
@@ -665,6 +756,9 @@ class DownloadJob extends DataClass implements Insertable<DownloadJob> {
       subAuto: serializer.fromJson<bool>(json['subAuto']),
       subEmbed: serializer.fromJson<bool>(json['subEmbed']),
       estimatedBytes: serializer.fromJson<int?>(json['estimatedBytes']),
+      trimStart: serializer.fromJson<double?>(json['trimStart']),
+      trimEnd: serializer.fromJson<double?>(json['trimEnd']),
+      attempts: serializer.fromJson<int>(json['attempts']),
       status: $DownloadJobsTable.$converterstatus.fromJson(
         serializer.fromJson<String>(json['status']),
       ),
@@ -694,6 +788,9 @@ class DownloadJob extends DataClass implements Insertable<DownloadJob> {
       'subAuto': serializer.toJson<bool>(subAuto),
       'subEmbed': serializer.toJson<bool>(subEmbed),
       'estimatedBytes': serializer.toJson<int?>(estimatedBytes),
+      'trimStart': serializer.toJson<double?>(trimStart),
+      'trimEnd': serializer.toJson<double?>(trimEnd),
+      'attempts': serializer.toJson<int>(attempts),
       'status': serializer.toJson<String>(
         $DownloadJobsTable.$converterstatus.toJson(status),
       ),
@@ -721,6 +818,9 @@ class DownloadJob extends DataClass implements Insertable<DownloadJob> {
     bool? subAuto,
     bool? subEmbed,
     Value<int?> estimatedBytes = const Value.absent(),
+    Value<double?> trimStart = const Value.absent(),
+    Value<double?> trimEnd = const Value.absent(),
+    int? attempts,
     JobStatus? status,
     double? progress,
     Value<int?> eta = const Value.absent(),
@@ -745,6 +845,9 @@ class DownloadJob extends DataClass implements Insertable<DownloadJob> {
     estimatedBytes: estimatedBytes.present
         ? estimatedBytes.value
         : this.estimatedBytes,
+    trimStart: trimStart.present ? trimStart.value : this.trimStart,
+    trimEnd: trimEnd.present ? trimEnd.value : this.trimEnd,
+    attempts: attempts ?? this.attempts,
     status: status ?? this.status,
     progress: progress ?? this.progress,
     eta: eta.present ? eta.value : this.eta,
@@ -773,6 +876,9 @@ class DownloadJob extends DataClass implements Insertable<DownloadJob> {
       estimatedBytes: data.estimatedBytes.present
           ? data.estimatedBytes.value
           : this.estimatedBytes,
+      trimStart: data.trimStart.present ? data.trimStart.value : this.trimStart,
+      trimEnd: data.trimEnd.present ? data.trimEnd.value : this.trimEnd,
+      attempts: data.attempts.present ? data.attempts.value : this.attempts,
       status: data.status.present ? data.status.value : this.status,
       progress: data.progress.present ? data.progress.value : this.progress,
       eta: data.eta.present ? data.eta.value : this.eta,
@@ -802,6 +908,9 @@ class DownloadJob extends DataClass implements Insertable<DownloadJob> {
           ..write('subAuto: $subAuto, ')
           ..write('subEmbed: $subEmbed, ')
           ..write('estimatedBytes: $estimatedBytes, ')
+          ..write('trimStart: $trimStart, ')
+          ..write('trimEnd: $trimEnd, ')
+          ..write('attempts: $attempts, ')
           ..write('status: $status, ')
           ..write('progress: $progress, ')
           ..write('eta: $eta, ')
@@ -829,6 +938,9 @@ class DownloadJob extends DataClass implements Insertable<DownloadJob> {
     subAuto,
     subEmbed,
     estimatedBytes,
+    trimStart,
+    trimEnd,
+    attempts,
     status,
     progress,
     eta,
@@ -855,6 +967,9 @@ class DownloadJob extends DataClass implements Insertable<DownloadJob> {
           other.subAuto == this.subAuto &&
           other.subEmbed == this.subEmbed &&
           other.estimatedBytes == this.estimatedBytes &&
+          other.trimStart == this.trimStart &&
+          other.trimEnd == this.trimEnd &&
+          other.attempts == this.attempts &&
           other.status == this.status &&
           other.progress == this.progress &&
           other.eta == this.eta &&
@@ -879,6 +994,9 @@ class DownloadJobsCompanion extends UpdateCompanion<DownloadJob> {
   final Value<bool> subAuto;
   final Value<bool> subEmbed;
   final Value<int?> estimatedBytes;
+  final Value<double?> trimStart;
+  final Value<double?> trimEnd;
+  final Value<int> attempts;
   final Value<JobStatus> status;
   final Value<double> progress;
   final Value<int?> eta;
@@ -902,6 +1020,9 @@ class DownloadJobsCompanion extends UpdateCompanion<DownloadJob> {
     this.subAuto = const Value.absent(),
     this.subEmbed = const Value.absent(),
     this.estimatedBytes = const Value.absent(),
+    this.trimStart = const Value.absent(),
+    this.trimEnd = const Value.absent(),
+    this.attempts = const Value.absent(),
     this.status = const Value.absent(),
     this.progress = const Value.absent(),
     this.eta = const Value.absent(),
@@ -926,6 +1047,9 @@ class DownloadJobsCompanion extends UpdateCompanion<DownloadJob> {
     this.subAuto = const Value.absent(),
     this.subEmbed = const Value.absent(),
     this.estimatedBytes = const Value.absent(),
+    this.trimStart = const Value.absent(),
+    this.trimEnd = const Value.absent(),
+    this.attempts = const Value.absent(),
     required JobStatus status,
     this.progress = const Value.absent(),
     this.eta = const Value.absent(),
@@ -955,6 +1079,9 @@ class DownloadJobsCompanion extends UpdateCompanion<DownloadJob> {
     Expression<bool>? subAuto,
     Expression<bool>? subEmbed,
     Expression<int>? estimatedBytes,
+    Expression<double>? trimStart,
+    Expression<double>? trimEnd,
+    Expression<int>? attempts,
     Expression<String>? status,
     Expression<double>? progress,
     Expression<int>? eta,
@@ -979,6 +1106,9 @@ class DownloadJobsCompanion extends UpdateCompanion<DownloadJob> {
       if (subAuto != null) 'sub_auto': subAuto,
       if (subEmbed != null) 'sub_embed': subEmbed,
       if (estimatedBytes != null) 'estimated_bytes': estimatedBytes,
+      if (trimStart != null) 'trim_start': trimStart,
+      if (trimEnd != null) 'trim_end': trimEnd,
+      if (attempts != null) 'attempts': attempts,
       if (status != null) 'status': status,
       if (progress != null) 'progress': progress,
       if (eta != null) 'eta': eta,
@@ -1005,6 +1135,9 @@ class DownloadJobsCompanion extends UpdateCompanion<DownloadJob> {
     Value<bool>? subAuto,
     Value<bool>? subEmbed,
     Value<int?>? estimatedBytes,
+    Value<double?>? trimStart,
+    Value<double?>? trimEnd,
+    Value<int>? attempts,
     Value<JobStatus>? status,
     Value<double>? progress,
     Value<int?>? eta,
@@ -1029,6 +1162,9 @@ class DownloadJobsCompanion extends UpdateCompanion<DownloadJob> {
       subAuto: subAuto ?? this.subAuto,
       subEmbed: subEmbed ?? this.subEmbed,
       estimatedBytes: estimatedBytes ?? this.estimatedBytes,
+      trimStart: trimStart ?? this.trimStart,
+      trimEnd: trimEnd ?? this.trimEnd,
+      attempts: attempts ?? this.attempts,
       status: status ?? this.status,
       progress: progress ?? this.progress,
       eta: eta ?? this.eta,
@@ -1085,6 +1221,15 @@ class DownloadJobsCompanion extends UpdateCompanion<DownloadJob> {
     if (estimatedBytes.present) {
       map['estimated_bytes'] = Variable<int>(estimatedBytes.value);
     }
+    if (trimStart.present) {
+      map['trim_start'] = Variable<double>(trimStart.value);
+    }
+    if (trimEnd.present) {
+      map['trim_end'] = Variable<double>(trimEnd.value);
+    }
+    if (attempts.present) {
+      map['attempts'] = Variable<int>(attempts.value);
+    }
     if (status.present) {
       map['status'] = Variable<String>(
         $DownloadJobsTable.$converterstatus.toSql(status.value),
@@ -1131,6 +1276,9 @@ class DownloadJobsCompanion extends UpdateCompanion<DownloadJob> {
           ..write('subAuto: $subAuto, ')
           ..write('subEmbed: $subEmbed, ')
           ..write('estimatedBytes: $estimatedBytes, ')
+          ..write('trimStart: $trimStart, ')
+          ..write('trimEnd: $trimEnd, ')
+          ..write('attempts: $attempts, ')
           ..write('status: $status, ')
           ..write('progress: $progress, ')
           ..write('eta: $eta, ')
@@ -1171,6 +1319,9 @@ typedef $$DownloadJobsTableCreateCompanionBuilder =
       Value<bool> subAuto,
       Value<bool> subEmbed,
       Value<int?> estimatedBytes,
+      Value<double?> trimStart,
+      Value<double?> trimEnd,
+      Value<int> attempts,
       required JobStatus status,
       Value<double> progress,
       Value<int?> eta,
@@ -1196,6 +1347,9 @@ typedef $$DownloadJobsTableUpdateCompanionBuilder =
       Value<bool> subAuto,
       Value<bool> subEmbed,
       Value<int?> estimatedBytes,
+      Value<double?> trimStart,
+      Value<double?> trimEnd,
+      Value<int> attempts,
       Value<JobStatus> status,
       Value<double> progress,
       Value<int?> eta,
@@ -1282,6 +1436,21 @@ class $$DownloadJobsTableFilterComposer
 
   ColumnFilters<int> get estimatedBytes => $composableBuilder(
     column: $table.estimatedBytes,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<double> get trimStart => $composableBuilder(
+    column: $table.trimStart,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<double> get trimEnd => $composableBuilder(
+    column: $table.trimEnd,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get attempts => $composableBuilder(
+    column: $table.attempts,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -1401,6 +1570,21 @@ class $$DownloadJobsTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<double> get trimStart => $composableBuilder(
+    column: $table.trimStart,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<double> get trimEnd => $composableBuilder(
+    column: $table.trimEnd,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get attempts => $composableBuilder(
+    column: $table.attempts,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   ColumnOrderings<String> get status => $composableBuilder(
     column: $table.status,
     builder: (column) => ColumnOrderings(column),
@@ -1492,6 +1676,15 @@ class $$DownloadJobsTableAnnotationComposer
     builder: (column) => column,
   );
 
+  GeneratedColumn<double> get trimStart =>
+      $composableBuilder(column: $table.trimStart, builder: (column) => column);
+
+  GeneratedColumn<double> get trimEnd =>
+      $composableBuilder(column: $table.trimEnd, builder: (column) => column);
+
+  GeneratedColumn<int> get attempts =>
+      $composableBuilder(column: $table.attempts, builder: (column) => column);
+
   GeneratedColumnWithTypeConverter<JobStatus, String> get status =>
       $composableBuilder(column: $table.status, builder: (column) => column);
 
@@ -1561,6 +1754,9 @@ class $$DownloadJobsTableTableManager
                 Value<bool> subAuto = const Value.absent(),
                 Value<bool> subEmbed = const Value.absent(),
                 Value<int?> estimatedBytes = const Value.absent(),
+                Value<double?> trimStart = const Value.absent(),
+                Value<double?> trimEnd = const Value.absent(),
+                Value<int> attempts = const Value.absent(),
                 Value<JobStatus> status = const Value.absent(),
                 Value<double> progress = const Value.absent(),
                 Value<int?> eta = const Value.absent(),
@@ -1584,6 +1780,9 @@ class $$DownloadJobsTableTableManager
                 subAuto: subAuto,
                 subEmbed: subEmbed,
                 estimatedBytes: estimatedBytes,
+                trimStart: trimStart,
+                trimEnd: trimEnd,
+                attempts: attempts,
                 status: status,
                 progress: progress,
                 eta: eta,
@@ -1609,6 +1808,9 @@ class $$DownloadJobsTableTableManager
                 Value<bool> subAuto = const Value.absent(),
                 Value<bool> subEmbed = const Value.absent(),
                 Value<int?> estimatedBytes = const Value.absent(),
+                Value<double?> trimStart = const Value.absent(),
+                Value<double?> trimEnd = const Value.absent(),
+                Value<int> attempts = const Value.absent(),
                 required JobStatus status,
                 Value<double> progress = const Value.absent(),
                 Value<int?> eta = const Value.absent(),
@@ -1632,6 +1834,9 @@ class $$DownloadJobsTableTableManager
                 subAuto: subAuto,
                 subEmbed: subEmbed,
                 estimatedBytes: estimatedBytes,
+                trimStart: trimStart,
+                trimEnd: trimEnd,
+                attempts: attempts,
                 status: status,
                 progress: progress,
                 eta: eta,

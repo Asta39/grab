@@ -7,6 +7,7 @@ import 'package:share_plus/share_plus.dart';
 import 'package:video_player/video_player.dart';
 
 import '../../app/providers.dart';
+import '../../core/audio/audio_playback.dart';
 import '../../core/theme/pop_theme.dart';
 import '../../core/widgets/pop_widgets.dart';
 import '../../core/widgets/toasts.dart';
@@ -16,6 +17,7 @@ import '../../data/settings/app_settings.dart';
 import '../library/library_items.dart';
 import '../library/player_screen.dart';
 import 'extraction_controller.dart';
+import 'ringtone_sheet.dart';
 import '../../core/utils/haptics.dart';
 
 void openDownload(BuildContext context, String jobId) {
@@ -209,6 +211,11 @@ class _Preview extends StatefulWidget {
 class _PreviewState extends State<_Preview> {
   late final VideoPlayerController _c = VideoPlayerController.file(
     File(widget.path),
+    // A real Android view: the texture path shows no picture on some phones.
+    viewType: VideoViewType.platformView,
+    // Play even while a call or other app holds the audio; otherwise Android
+    // silently holds playback back and the preview just sits there.
+    videoPlayerOptions: VideoPlayerOptions(mixWithOthers: true),
   );
   var _failed = false;
 
@@ -218,7 +225,27 @@ class _PreviewState extends State<_Preview> {
   void initState() {
     super.initState();
     _c.addListener(() => mounted ? setState(() {}) : null);
-    _c.initialize().catchError((_) => setState(() => _failed = true));
+    // Opening a video file is heavy; wait until the page has finished growing
+    // open, so the morph runs at full frame rate.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      final a = ModalRoute.of(context)?.animation;
+      if (a == null || a.isCompleted) return _start();
+      void done(AnimationStatus s) {
+        if (s != AnimationStatus.completed) return;
+        a.removeStatusListener(done);
+        _start();
+      }
+
+      a.addStatusListener(done);
+    });
+  }
+
+  void _start() {
+    if (!mounted) return;
+    _c.initialize().catchError((_) {
+      if (mounted) setState(() => _failed = true);
+    });
   }
 
   @override
@@ -497,6 +524,12 @@ class _FileRow extends ConsumerWidget {
               onPressed: () => openPlayer(context, item),
               icon: const Icon(Icons.play_arrow_rounded),
             ),
+          if (exists && kind != LibraryKind.subtitles)
+            IconButton(
+              tooltip: 'Make ringtone',
+              onPressed: () => showRingtoneSheet(context, item),
+              icon: const Icon(Icons.ring_volume_rounded),
+            ),
           if (exists)
             IconButton(
               tooltip: 'Share',
@@ -545,6 +578,7 @@ class _FileRow extends ConsumerWidget {
     );
     if (ok != true) return;
     try {
+      await AudioPlayback.forget(item.path);
       await File(item.path).delete();
       ref.invalidate(jobsProvider);
       popToast('Deleted', icon: Icons.delete_rounded, detail: item.fileName);

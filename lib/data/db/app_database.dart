@@ -4,7 +4,9 @@ import 'package:drift_flutter/drift_flutter.dart';
 part 'app_database.g.dart';
 
 /// Job states, stored by name.
-enum JobStatus { queued, running, done, failed, canceled }
+/// [paused]: stopped by the user, resumes where it left off.
+/// [waiting]: lost the connection; starts again by itself once the phone is online.
+enum JobStatus { queued, running, done, failed, canceled, paused, waiting }
 
 /// One download: what was asked for, and how it went.
 @DataClassName('DownloadJob')
@@ -28,6 +30,13 @@ class DownloadJobs extends Table {
   BoolColumn get subEmbed => boolean().withDefault(const Constant(false))();
 
   IntColumn get estimatedBytes => integer().nullable()();
+
+  /// Only save this part of the media, in seconds.
+  RealColumn get trimStart => real().nullable()();
+  RealColumn get trimEnd => real().nullable()();
+
+  /// Automatic retries after connection problems.
+  IntColumn get attempts => integer().withDefault(const Constant(0))();
   TextColumn get status => textEnum<JobStatus>()();
   RealColumn get progress => real().withDefault(const Constant(0))();
   IntColumn get eta => integer().nullable()();
@@ -48,7 +57,7 @@ class AppDatabase extends _$AppDatabase {
     : super(executor ?? driftDatabase(name: 'grab'));
 
   @override
-  int get schemaVersion => 2;
+  int get schemaVersion => 3;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -59,6 +68,11 @@ class AppDatabase extends _$AppDatabase {
         await customStatement(
           "UPDATE download_jobs SET mode = 'video' WHERE mode IN ('videoAndAudio', 'videoOnly')",
         );
+      }
+      if (from < 3) {
+        await m.addColumn(downloadJobs, downloadJobs.trimStart);
+        await m.addColumn(downloadJobs, downloadJobs.trimEnd);
+        await m.addColumn(downloadJobs, downloadJobs.attempts);
       }
     },
   );

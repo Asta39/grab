@@ -8,6 +8,7 @@ import '../../core/utils/permissions.dart';
 import '../../core/widgets/pop_widgets.dart';
 import '../../core/widgets/toasts.dart';
 import '../../data/engine/media_info.dart';
+import 'clip_preview.dart';
 import 'fetch_controller.dart';
 import '../../core/utils/haptics.dart';
 
@@ -87,45 +88,32 @@ class FormatSheet extends ConsumerWidget {
             style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700),
           ),
           const SizedBox(height: 16),
-          Stack(
-            children: [
-              SizedBox(
-                height: 190,
-                width: double.infinity,
-                child: PopThumb(
-                  seed: info.url,
-                  url: info.thumbnail,
-                  size: double.infinity,
-                  radius: Pop.cardRadius,
-                ),
-              ),
-              if (info.duration != null)
-                Positioned(
-                  right: 12,
-                  bottom: 12,
-                  child: DecoratedBox(
-                    decoration: const ShapeDecoration(
-                      shape: StadiumBorder(),
-                      color: Pop.ink,
-                    ),
-                    child: Padding(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 10,
-                        vertical: 4,
-                      ),
-                      child: Text(
-                        _duration(info.duration!),
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontWeight: FontWeight.w700,
-                          fontSize: 12,
-                        ),
-                      ),
-                    ),
-                  ),
-                ),
-            ],
+          ClipPreview(
+            info: info,
+            trim: s.mode == DownloadMode.subtitlesOnly ? null : s.trim,
+            onTrim: c.setTrim,
           ),
+          if (s.mode != DownloadMode.subtitlesOnly &&
+              info.duration != null &&
+              info.duration! >= 2)
+            SwitchListTile(
+              contentPadding: EdgeInsets.zero,
+              secondary: const Icon(Icons.content_cut_rounded),
+              title: const Text(
+                'Save only a part',
+                style: TextStyle(fontWeight: FontWeight.w600),
+              ),
+              subtitle: Text(
+                s.trim == null
+                    ? 'Pick the part on the video above'
+                    : 'Keeping ${clockLabel(s.trim!.start)} to ${clockLabel(s.trim!.end)}',
+              ),
+              value: s.trim != null,
+              onChanged: (on) {
+                Haptics.selection();
+                c.setTrimOn(on);
+              },
+            ),
           const SizedBox(height: 14),
           Text(
             info.title,
@@ -165,13 +153,21 @@ class FormatSheet extends ConsumerWidget {
                   .fadeIn(duration: Pop.medium, delay: (40 * i).ms)
                   .slideY(begin: 0.15, end: 0, curve: Curves.easeOutCubic),
           ],
+
           if (s.mode != DownloadMode.audioOnly) ..._subtitles(info, s, c),
           const SizedBox(height: 24),
           PopButton(
             label: switch (s.mode) {
               DownloadMode.subtitlesOnly =>
                 s.subLangs.isEmpty ? 'Pick a language' : 'Download subtitles',
-              _ => ['Download', ?formatBytes(s.selected?.bytes)].join(' · '),
+              _ => [
+                s.trim == null ? 'Download' : 'Download clip',
+                ?formatBytes(
+                  s.selected?.bytes == null
+                      ? null
+                      : (s.selected!.bytes! * s.keptFraction).round(),
+                ),
+              ].join(' · '),
             },
             icon: Icons.download_rounded,
             onPressed: s.canDownload ? download : null,
@@ -223,15 +219,5 @@ class FormatSheet extends ConsumerWidget {
           onChanged: c.setEmbed,
         ),
     ];
-  }
-
-  static String _duration(double seconds) {
-    final d = Duration(seconds: seconds.round());
-    final m = d.inMinutes
-        .remainder(60)
-        .toString()
-        .padLeft(d.inHours > 0 ? 2 : 1, '0');
-    final s = d.inSeconds.remainder(60).toString().padLeft(2, '0');
-    return d.inHours > 0 ? '${d.inHours}:$m:$s' : '$m:$s';
   }
 }

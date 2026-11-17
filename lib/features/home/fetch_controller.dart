@@ -13,6 +13,7 @@ class FetchState {
     this.optionIndex = 0,
     this.subLangs = const {},
     this.embedSubs = false,
+    this.trim,
   });
 
   final AsyncValue<MediaInfo?> info;
@@ -20,6 +21,16 @@ class FetchState {
   final int optionIndex;
   final Set<String> subLangs;
   final bool embedSubs;
+
+  /// Part to keep, in seconds; null = the whole thing.
+  final ({double start, double end})? trim;
+
+  /// Share of the full length kept, for size estimates.
+  double get keptFraction {
+    final d = info.value?.duration;
+    if (trim == null || d == null || d <= 0) return 1;
+    return ((trim!.end - trim!.start) / d).clamp(0, 1);
+  }
 
   List<QualityOption> get options => info.value?.optionsFor(mode) ?? const [];
   QualityOption? get selected => options.isEmpty
@@ -37,12 +48,14 @@ class FetchState {
     int? optionIndex,
     Set<String>? subLangs,
     bool? embedSubs,
+    ({double start, double end})? Function()? trim,
   }) => FetchState(
     info: info ?? this.info,
     mode: mode ?? this.mode,
     optionIndex: optionIndex ?? this.optionIndex,
     subLangs: subLangs ?? this.subLangs,
     embedSubs: embedSubs ?? this.embedSubs,
+    trim: trim != null ? trim() : this.trim,
   );
 }
 
@@ -81,6 +94,17 @@ class FetchController extends Notifier<FetchState> {
   void setOption(int i) => state = state.copyWith(optionIndex: i);
   void setEmbed(bool v) => state = state.copyWith(embedSubs: v);
 
+  /// Turns trimming on (whole length to start with) or off.
+  void setTrimOn(bool on) {
+    final d = state.info.value?.duration;
+    state = state.copyWith(
+      trim: () => on && d != null ? (start: 0.0, end: d) : null,
+    );
+  }
+
+  void setTrim(double start, double end) =>
+      state = state.copyWith(trim: () => (start: start, end: end));
+
   void toggleLang(String lang) {
     final next = {...state.subLangs};
     next.contains(lang) ? next.remove(lang) : next.add(lang);
@@ -94,6 +118,11 @@ class FetchController extends Notifier<FetchState> {
     final langs = state.subLangs.toList();
     final auto = info.subtitles.any((t) => t.auto && langs.contains(t.lang));
     final settings = ref.read(settingsProvider);
+    final t = state.trim;
+    final d = info.duration;
+    // Unchanged ends mean "from the start" / "to the end".
+    final start = t == null || t.start <= 0 ? null : t.start;
+    final end = t == null || (d != null && t.end >= d) ? null : t.end;
     return ref
         .read(downloadRepositoryProvider)
         .enqueue(
@@ -101,7 +130,11 @@ class FetchController extends Notifier<FetchState> {
             info: info,
             mode: state.mode,
             maxHeight: state.selected?.height,
-            estimatedBytes: state.selected?.bytes,
+            estimatedBytes: state.selected?.bytes == null
+                ? null
+                : (state.selected!.bytes! * state.keptFraction).round(),
+            trimStart: state.mode == DownloadMode.subtitlesOnly ? null : start,
+            trimEnd: state.mode == DownloadMode.subtitlesOnly ? null : end,
             subtitles: SubtitleChoice(
               langs: langs,
               includeAuto: auto,
