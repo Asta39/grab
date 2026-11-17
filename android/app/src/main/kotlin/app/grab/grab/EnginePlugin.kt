@@ -142,10 +142,12 @@ class EnginePlugin(private val context: Context, messenger: BinaryMessenger) {
             val paths = collectOutputs(dir, resp.out, job.match, startedAt)
             if (paths.isNotEmpty()) MediaScannerConnection.scanFile(context, paths.toTypedArray(), null, null)
             emit(mapOf("id" to job.id, "status" to "done", "progress" to 100.0, "paths" to paths))
+            main.post { DownloadService.notifyFinished(context, job.id, job.title, ok = true) }
         } catch (e: YoutubeDL.CanceledException) {
             emit(mapOf("id" to job.id, "status" to "canceled"))
         } catch (e: Throwable) {
             emit(mapOf("id" to job.id, "status" to "error", "error" to (e.message ?: e.toString())))
+            main.post { DownloadService.notifyFinished(context, job.id, job.title, ok = false) }
         } finally {
             active.remove(job.id)
             refreshService()

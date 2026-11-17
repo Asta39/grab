@@ -7,13 +7,17 @@ environment:
   sdk: ^3.12.2
 
 dependencies:
+  confetti: ^0.8.0
   drift: ^2.35.4
   drift_flutter: ^0.3.1
   flutter:
     sdk: flutter
+  flutter_animate: ^4.5.2
   flutter_riverpod: ^3.5.0
   path: ^1.9.1
   path_provider: ^2.1.6
+  receive_sharing_intent: ^1.9.0
+  toastification: ^3.2.2
 
 dev_dependencies:
   flutter_test:
@@ -24,3 +28,7 @@ dev_dependencies:
 
 flutter:
   uses-material-design: true
+  fonts:
+    - family: Outfit
+      fonts:
+        - asset: assets/fonts/Outfit-Variable.ttf

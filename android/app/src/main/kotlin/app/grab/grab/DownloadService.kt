@@ -23,20 +23,26 @@ class DownloadService : Service() {
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         val count = intent?.getIntExtra(EXTRA_COUNT, 0) ?: 0
-        if (count == 0) {
-            ServiceCompat.stopForeground(this, ServiceCompat.STOP_FOREGROUND_REMOVE)
-            stopSelf()
-            return START_NOT_STICKY
-        }
         val notification = build(
             this,
             intent?.getStringExtra(EXTRA_TITLE) ?: "Downloading",
-            count,
+            maxOf(count, 1),
             intent?.getIntExtra(EXTRA_PERCENT, 0) ?: 0,
         )
+        // Android requires startForeground on every start of a foreground service,
+        // even when we are about to stop; otherwise it times out and leaves the notification.
         val type = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) ServiceInfo.FOREGROUND_SERVICE_TYPE_DATA_SYNC else 0
         ServiceCompat.startForeground(this, NOTIFICATION_ID, notification, type)
+        if (count == 0) {
+            ServiceCompat.stopForeground(this, ServiceCompat.STOP_FOREGROUND_REMOVE)
+            stopSelf()
+        }
         return START_NOT_STICKY
+    }
+
+    override fun onDestroy() {
+        getSystemService(NotificationManager::class.java).cancel(NOTIFICATION_ID)
+        super.onDestroy()
     }
 
     companion object {
@@ -62,13 +68,36 @@ class DownloadService : Service() {
                 .putExtra(EXTRA_COUNT, count)
                 .putExtra(EXTRA_TITLE, jobs.firstOrNull()?.first ?: "")
                 .putExtra(EXTRA_PERCENT, percent)
-            if (count == 0) {
-                running = false
-                context.startService(intent)
-            } else {
-                running = true
-                ContextCompat.startForegroundService(context, intent)
+            running = count > 0
+            ContextCompat.startForegroundService(context, intent)
+        }
+
+        private const val DONE_CHANNEL_ID = "finished"
+
+        /** One notification per finished job: "Saved" or "Download failed". */
+        fun notifyFinished(context: Context, jobId: String, title: String, ok: Boolean) {
+            val manager = context.getSystemService(NotificationManager::class.java)
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
+                context.checkSelfPermission(android.Manifest.permission.POST_NOTIFICATIONS) != android.content.pm.PackageManager.PERMISSION_GRANTED
+            ) return
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O && manager.getNotificationChannel(DONE_CHANNEL_ID) == null) {
+                manager.createNotificationChannel(
+                    NotificationChannel(DONE_CHANNEL_ID, "Finished downloads", NotificationManager.IMPORTANCE_DEFAULT)
+                )
             }
+            val open = PendingIntent.getActivity(
+                context, 1,
+                Intent(context, MainActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_SINGLE_TOP),
+                PendingIntent.FLAG_IMMUTABLE,
+            )
+            val n = NotificationCompat.Builder(context, DONE_CHANNEL_ID)
+                .setSmallIcon(if (ok) android.R.drawable.stat_sys_download_done else android.R.drawable.stat_notify_error)
+                .setContentTitle(if (ok) "Saved" else "Download failed")
+                .setContentText(title)
+                .setAutoCancel(true)
+                .setContentIntent(open)
+                .build()
+            manager.notify(jobId.hashCode(), n)
         }
 
         private fun build(context: Context, title: String, count: Int, percent: Int): Notification {
