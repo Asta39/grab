@@ -1,7 +1,11 @@
+import 'dart:math' as math;
+
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
+import 'package:liquid_glass_renderer/liquid_glass_renderer.dart';
 
 import '../theme/pop_theme.dart';
+import 'gooey.dart';
+import '../../core/utils/haptics.dart';
 
 /// Black pill button that squishes when pressed. The signature "Fetch" / "Download" button.
 class PopButton extends StatefulWidget {
@@ -47,7 +51,7 @@ class _PopButtonState extends State<PopButton> {
         onTapUp: (_) => setState(() => _down = false),
         onTap: _enabled
             ? () {
-                HapticFeedback.lightImpact();
+                Haptics.light();
                 widget.onPressed!();
               }
             : null,
@@ -125,7 +129,7 @@ class PopIconButton extends StatelessWidget {
       onPressed: onPressed == null
           ? null
           : () {
-              HapticFeedback.selectionClick();
+              Haptics.selection();
               onPressed!();
             },
       style: IconButton.styleFrom(
@@ -191,7 +195,7 @@ class PopSegmented<T> extends StatelessWidget {
                     child: InkWell(
                       customBorder: const StadiumBorder(),
                       onTap: () {
-                        HapticFeedback.selectionClick();
+                        Haptics.selection();
                         onChanged(values[i]);
                       },
                       child: Center(
@@ -347,8 +351,9 @@ class PopTab {
   final int badge;
 }
 
-/// Floating black pill tab bar; the active tab is a yellow pill.
-class PopTabBar extends StatelessWidget {
+/// Floating liquid-glass dock. The page shows through the glass; the active tab
+/// is a yellow blob that stretches like a metaball when it moves between tabs.
+class PopTabBar extends StatefulWidget {
   const PopTabBar({
     super.key,
     required this.tabs,
@@ -361,73 +366,174 @@ class PopTabBar extends StatelessWidget {
   final ValueChanged<int> onChanged;
 
   @override
+  State<PopTabBar> createState() => _PopTabBarState();
+}
+
+class _PopTabBarState extends State<PopTabBar> {
+  late int _from = widget.index;
+
+  @override
+  void didUpdateWidget(PopTabBar old) {
+    super.didUpdateWidget(old);
+    if (old.index != widget.index) _from = old.index;
+  }
+
+  @override
   Widget build(BuildContext context) {
+    final dark = Theme.of(context).brightness == Brightness.dark;
+    final still = Pop.reduceMotion(context);
+    final n = widget.tabs.length;
+    final movingRight = widget.index > _from;
+    // The leading edge races ahead and the trailing edge catches up:
+    // the gap between them is what stretches into a liquid neck.
+    const fast = Duration(milliseconds: 260);
+    const slow = Duration(milliseconds: 520);
+
     return SafeArea(
       minimum: const EdgeInsets.fromLTRB(16, 0, 16, 12),
-      child: Container(
+      child: SizedBox(
         height: 68,
-        padding: const EdgeInsets.all(8),
-        decoration: ShapeDecoration(
-          shape: const StadiumBorder(),
-          color: context.pop.bar,
-        ),
-        child: Row(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            for (var i = 0; i < tabs.length; i++)
-              Expanded(
-                child: Semantics(
-                  selected: i == index,
-                  button: true,
-                  label: tabs[i].badge > 0
-                      ? '${tabs[i].label}, ${tabs[i].badge} active'
-                      : tabs[i].label,
-                  excludeSemantics: true,
-                  child: GestureDetector(
-                    behavior: HitTestBehavior.opaque,
-                    onTap: () {
-                      HapticFeedback.selectionClick();
-                      onChanged(i);
-                    },
-                    child: AnimatedContainer(
-                      duration: Pop.reduceMotion(context)
-                          ? Duration.zero
-                          : Pop.medium,
-                      curve: Curves.easeOutCubic,
-                      decoration: ShapeDecoration(
-                        shape: const StadiumBorder(),
-                        color: i == index ? Pop.yellow : Colors.transparent,
-                      ),
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Badge(
-                            isLabelVisible: tabs[i].badge > 0,
-                            backgroundColor: Pop.yellow,
-                            textColor: Pop.ink,
-                            label: Text('${tabs[i].badge}'),
-                            child: Icon(
-                              tabs[i].icon,
-                              color: i == index ? Pop.ink : Pop.navIdle,
+        child: LiquidGlassLayer(
+          settings: LiquidGlassSettings(
+            thickness: 18,
+            blur: 6,
+            glassColor: dark
+                ? const Color(0x55202020)
+                : const Color(0x66FFFFFF),
+            lightIntensity: dark ? 0.6 : 1.2,
+            saturation: 1.3,
+          ),
+          child: LiquidGlass(
+            shape: const LiquidRoundedSuperellipse(borderRadius: 34),
+            glassContainsChild: false,
+            child: LayoutBuilder(
+              builder: (context, box) {
+                const pad = 6.0;
+                final w = (box.maxWidth - pad * 2) / n;
+                double left(int i) => pad + w * widget.index;
+                return Stack(
+                  children: [
+                    // Dock outline so the glass edge reads on any background.
+                    Positioned.fill(
+                      child: DecoratedBox(
+                        decoration: ShapeDecoration(
+                          shape: RoundedSuperellipseBorder(
+                            borderRadius: BorderRadius.circular(34),
+                            side: BorderSide(
+                              color: dark ? Colors.white12 : Colors.black12,
                             ),
                           ),
-                          if (i == index) ...[
-                            const SizedBox(width: 8),
-                            Text(
-                              tabs[i].label,
-                              style: const TextStyle(
-                                fontWeight: FontWeight.w700,
-                                color: Pop.ink,
-                              ),
+                        ),
+                      ),
+                    ),
+                    // Gooey active blob.
+                    Positioned.fill(
+                      child: Gooey(
+                        blur: 7,
+                        child: Stack(
+                          children: [
+                            TweenAnimationBuilder<double>(
+                              tween: Tween(end: left(widget.index)),
+                              duration: still
+                                  ? Duration.zero
+                                  : (movingRight ? slow : fast),
+                              curve: Curves.easeOutCubic,
+                              builder: (_, l, _) =>
+                                  TweenAnimationBuilder<double>(
+                                    tween: Tween(end: left(widget.index) + w),
+                                    duration: still
+                                        ? Duration.zero
+                                        : (movingRight ? fast : slow),
+                                    curve: Curves.easeOutBack,
+                                    builder: (_, r, _) => Positioned(
+                                      left: math.min(l, r - 40),
+                                      width: math.max(r - l, 40),
+                                      top: pad,
+                                      bottom: pad,
+                                      child: const DecoratedBox(
+                                        decoration: ShapeDecoration(
+                                          shape: StadiumBorder(),
+                                          color: Pop.yellow,
+                                        ),
+                                      ),
+                                    ),
+                                  ),
                             ),
                           ],
+                        ),
+                      ),
+                    ),
+                    Padding(
+                      padding: const EdgeInsets.all(pad),
+                      child: Row(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: [
+                          for (var i = 0; i < n; i++) _tab(context, i, dark),
                         ],
                       ),
                     ),
-                  ),
+                  ],
+                );
+              },
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _tab(BuildContext context, int i, bool dark) {
+    final tab = widget.tabs[i];
+    final on = i == widget.index;
+    final idle = dark ? const Color(0xFFBDBDBD) : const Color(0xFF3A3A3A);
+    return Expanded(
+      child: Semantics(
+        selected: on,
+        button: true,
+        label: tab.badge > 0 ? '${tab.label}, ${tab.badge} active' : tab.label,
+        excludeSemantics: true,
+        child: GestureDetector(
+          behavior: HitTestBehavior.opaque,
+          onTap: () {
+            if (!on) Haptics.selection();
+            widget.onChanged(i);
+          },
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Badge(
+                isLabelVisible: tab.badge > 0,
+                backgroundColor: Pop.ink,
+                textColor: Pop.yellow,
+                label: Text('${tab.badge}'),
+                child: AnimatedScale(
+                  scale: on ? 1.08 : 1,
+                  duration: Pop.medium,
+                  curve: Curves.easeOutBack,
+                  child: Icon(tab.icon, color: on ? Pop.ink : idle),
                 ),
               ),
-          ],
+              AnimatedSize(
+                duration: Pop.medium,
+                curve: Curves.easeOutCubic,
+                child: on
+                    ? Padding(
+                        padding: const EdgeInsets.only(left: 6),
+                        child: Text(
+                          tab.label,
+                          maxLines: 1,
+                          overflow: TextOverflow.fade,
+                          softWrap: false,
+                          style: const TextStyle(
+                            fontWeight: FontWeight.w700,
+                            color: Pop.ink,
+                          ),
+                        ),
+                      )
+                    : const SizedBox.shrink(),
+              ),
+            ],
+          ),
         ),
       ),
     );
@@ -459,7 +565,7 @@ class PopOptionTile extends StatelessWidget {
         child: InkWell(
           borderRadius: Pop.cardRadius,
           onTap: () {
-            HapticFeedback.selectionClick();
+            Haptics.selection();
             onTap();
           },
           child: AnimatedContainer(

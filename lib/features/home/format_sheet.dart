@@ -1,14 +1,15 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../app/providers.dart';
 import '../../core/theme/pop_theme.dart';
+import '../../core/utils/permissions.dart';
 import '../../core/widgets/pop_widgets.dart';
 import '../../core/widgets/toasts.dart';
 import '../../data/engine/media_info.dart';
 import 'fetch_controller.dart';
+import '../../core/utils/haptics.dart';
 
 /// Opens the Choose format sheet for the fetched link.
 /// Returns true when a download was queued.
@@ -51,9 +52,18 @@ class FormatSheet extends ConsumerWidget {
         : '$label · ${settings.container.toUpperCase()}';
 
     Future<void> download() async {
+      // Explain and ask for notification (and, on old Android, storage) access first.
+      final ok = await ensureDownloadPermissions(
+        context,
+        ref.read(sharedPrefsProvider),
+      );
+      if (!ok) {
+        popToast('Grab needs storage access to save files', error: true);
+        return;
+      }
       final id = await c.download();
       if (id == null || !context.mounted) return;
-      HapticFeedback.mediumImpact();
+      Haptics.medium();
       popToast(
         'Added to downloads',
         icon: Icons.download_rounded,
@@ -195,7 +205,7 @@ class FormatSheet extends ConsumerWidget {
               label: Text(t.auto ? '${t.name} · auto' : t.name),
               selected: s.subLangs.contains(t.lang),
               onSelected: (_) {
-                HapticFeedback.selectionClick();
+                Haptics.selection();
                 c.toggleLang(t.lang);
               },
             ),

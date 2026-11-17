@@ -2,9 +2,11 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:package_info_plus/package_info_plus.dart';
+import 'package:permission_handler/permission_handler.dart';
 
 import '../../app/providers.dart';
 import '../../core/theme/pop_theme.dart';
+import '../../core/utils/permissions.dart';
 import '../../core/widgets/pop_widgets.dart';
 import '../../core/widgets/toasts.dart';
 import '../../data/engine/media_info.dart';
@@ -27,6 +29,7 @@ class SettingsScreen extends ConsumerStatefulWidget {
 
 class _SettingsScreenState extends ConsumerState<SettingsScreen> {
   var _updating = false;
+  var _permCheck = 0;
 
   Future<void> _updateEngine() async {
     setState(() => _updating = true);
@@ -184,6 +187,29 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                 'Sites change often. If a link stops working, update the engine first.',
                 style: TextStyle(fontSize: 13, color: context.pop.muted),
               ),
+            ),
+            const SizedBox(height: 16),
+            const PopSection('Notifications'),
+            _Group(
+              children: [
+                FutureBuilder<PermissionStatus>(
+                  key: ValueKey(_permCheck),
+                  future: notificationStatus(),
+                  builder: (context, snap) {
+                    final on = snap.data?.isGranted ?? false;
+                    return _Row(
+                      label: 'Download alerts',
+                      value: snap.data == null ? '' : (on ? 'On' : 'Off'),
+                      onTap: on
+                          ? null
+                          : () async {
+                              await requestNotifications();
+                              if (mounted) setState(() => _permCheck++);
+                            },
+                    );
+                  },
+                ),
+              ],
             ),
             const SizedBox(height: 16),
             const PopSection('Appearance'),
