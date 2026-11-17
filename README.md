@@ -1,3 +1,5 @@
+<img src="assets/brand/icon.png" width="96" alt="Grab icon">
+
 # Grab
 
 Paste a link. Get the file.

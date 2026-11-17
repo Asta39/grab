@@ -91,7 +91,7 @@ class DownloadService : Service() {
                 PendingIntent.FLAG_IMMUTABLE,
             )
             val n = NotificationCompat.Builder(context, DONE_CHANNEL_ID)
-                .setSmallIcon(if (ok) android.R.drawable.stat_sys_download_done else android.R.drawable.stat_notify_error)
+                .setSmallIcon(if (ok) R.drawable.ic_stat_grab else android.R.drawable.stat_notify_error)
                 .setContentTitle(if (ok) "Saved" else "Download failed")
                 .setContentText(title)
                 .setAutoCancel(true)
@@ -114,7 +114,7 @@ class DownloadService : Service() {
             )
             val heading = if (count == 1) title else "Downloading $count items"
             return NotificationCompat.Builder(context, CHANNEL_ID)
-                .setSmallIcon(android.R.drawable.stat_sys_download)
+                .setSmallIcon(R.drawable.ic_stat_grab)
                 .setContentTitle(heading)
                 .setContentText("$percent%")
                 .setProgress(100, percent, percent == 0)
