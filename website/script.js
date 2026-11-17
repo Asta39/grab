@@ -28,8 +28,11 @@ if (os) {
   if (os === 'android') {
     hero.textContent = 'Download for Android';
     hero.href = 'https://github.com/Asta39/grab/releases/latest';
+  } else if (os === 'mac') {
+    hero.textContent = 'Download for Mac';
+    hero.href = 'https://github.com/Asta39/grab/releases/latest/download/grab-macos.dmg';
   } else {
-    hero.textContent = 'Get Grab';
-    note.textContent = `Available now for Android. Grab for ${os === 'mac' ? 'Mac' : 'Windows'} is on the way.`;
+    hero.textContent = 'Download for Windows';
+    hero.href = 'https://github.com/Asta39/grab/releases/latest/download/grab-windows-x64.zip';
   }
 }
