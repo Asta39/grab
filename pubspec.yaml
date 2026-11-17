@@ -1,7 +1,7 @@
 name: grab
-description: "A new Flutter project."
+description: "Grab: download video, audio and subtitles from TikTok, YouTube, Instagram, Pinterest and 1,800+ sites."
 publish_to: 'none'
-version: 0.1.0+1
+version: 1.0.0+1
 
 environment:
   sdk: ^3.12.2
@@ -14,10 +14,14 @@ dependencies:
     sdk: flutter
   flutter_animate: ^4.5.2
   flutter_riverpod: ^3.5.0
+  package_info_plus: ^10.2.2
   path: ^1.9.1
   path_provider: ^2.1.6
   receive_sharing_intent: ^1.9.0
+  share_plus: ^13.3.1
+  shared_preferences: ^2.5.6
   toastification: ^3.2.2
+  video_player: ^2.14.1
 
 dev_dependencies:
   flutter_test:

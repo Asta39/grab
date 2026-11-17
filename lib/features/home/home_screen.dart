@@ -9,6 +9,7 @@ import '../../core/utils/links.dart';
 import '../../core/widgets/pop_widgets.dart';
 import '../../data/db/app_database.dart';
 import '../../data/engine/media_info.dart';
+import '../detail/download_detail_screen.dart';
 import 'fetch_controller.dart';
 import 'format_sheet.dart';
 
@@ -62,7 +63,10 @@ class HomeScreenState extends ConsumerState<HomeScreen> {
   @override
   Widget build(BuildContext context) {
     // Open the format sheet as soon as a fetch succeeds.
-    ref.listen(fetchControllerProvider.select((s) => s.info), (prev, next) async {
+    ref.listen(fetchControllerProvider.select((s) => s.info), (
+      prev,
+      next,
+    ) async {
       if (prev is AsyncLoading && next is AsyncData && next.value != null) {
         HapticFeedback.lightImpact();
         if (await showFormatSheet(context)) widget.onQueued?.call();
@@ -84,24 +88,53 @@ class HomeScreenState extends ConsumerState<HomeScreen> {
         child: ListView(
           padding: const EdgeInsets.fromLTRB(24, 12, 24, 120),
           children: [
-            Row(children: [
-              const Text('Grab', style: TextStyle(fontSize: 26, fontWeight: FontWeight.w800, letterSpacing: -0.5)),
-              const Spacer(),
-              PopIconButton(icon: Icons.content_paste_rounded, tooltip: 'Paste link and fetch', onPressed: _paste),
-            ]),
+            Row(
+              children: [
+                const Text(
+                  'Grab',
+                  style: TextStyle(
+                    fontSize: 26,
+                    fontWeight: FontWeight.w800,
+                    letterSpacing: -0.5,
+                  ),
+                ),
+                const Spacer(),
+                PopIconButton(
+                  icon: Icons.content_paste_rounded,
+                  tooltip: 'Paste link and fetch',
+                  onPressed: _paste,
+                ),
+              ],
+            ),
             const SizedBox(height: 28),
-            const Text('Paste a link.\nGet the file.',
-                    style: TextStyle(fontSize: 46, fontWeight: FontWeight.w800, height: 1.02, letterSpacing: -0.6))
+            const Text(
+                  'Paste a link.\nGet the file.',
+                  style: TextStyle(
+                    fontSize: 46,
+                    fontWeight: FontWeight.w800,
+                    height: 1.02,
+                    letterSpacing: -0.6,
+                  ),
+                )
                 .animate(target: still ? null : 1)
                 .fadeIn(duration: 400.ms)
                 .slideY(begin: 0.2, end: 0, curve: Curves.easeOutCubic),
             const SizedBox(height: 24),
-            _LinkField(controller: _url, busy: s.info.isLoading, onFetch: _fetch),
+            _LinkField(
+              controller: _url,
+              busy: s.info.isLoading,
+              onFetch: _fetch,
+            ),
             const SizedBox(height: 14),
-            Wrap(spacing: 8, runSpacing: 8, children: [
-              for (final p in platforms) _PlatformChip(label: p, active: p == detected),
-              const _PlatformChip(label: '+ 1,800 more', active: false),
-            ]),
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: [
+                for (final p in platforms)
+                  _PlatformChip(label: p, active: p == detected),
+                const _PlatformChip(label: '+ 1,800 more', active: false),
+              ],
+            ),
             const SizedBox(height: 8),
             Text(
               version.when(
@@ -109,17 +142,26 @@ class HomeScreenState extends ConsumerState<HomeScreen> {
                 loading: () => 'Starting engine…',
                 error: (e, _) => 'Engine failed to start',
               ),
-              style: const TextStyle(fontSize: 12, color: Pop.muted),
+              style: TextStyle(fontSize: 12, color: context.pop.muted),
             ),
             ...switch (s.info) {
-              AsyncLoading() => [const SizedBox(height: 24), const _FetchingCard()],
-              AsyncError(:final error) => [const SizedBox(height: 24), _ErrorCard(message: '$error', onRetry: _fetch)],
+              AsyncLoading() => [
+                const SizedBox(height: 24),
+                const _FetchingCard(),
+              ],
+              AsyncError(:final error) => [
+                const SizedBox(height: 24),
+                _ErrorCard(message: '$error', onRetry: _fetch),
+              ],
               AsyncData(:final value?) => [
-                  const SizedBox(height: 24),
-                  _ReadyCard(info: value, onOpen: () async {
+                const SizedBox(height: 24),
+                _ReadyCard(
+                  info: value,
+                  onOpen: () async {
                     if (await showFormatSheet(context)) widget.onQueued?.call();
-                  }),
-                ],
+                  },
+                ),
+              ],
               _ => const <Widget>[],
             },
             if (recent.isNotEmpty) ...[
@@ -140,7 +182,11 @@ class HomeScreenState extends ConsumerState<HomeScreen> {
 
 /// Pill text field with the Fetch button inside it.
 class _LinkField extends StatelessWidget {
-  const _LinkField({required this.controller, required this.busy, required this.onFetch});
+  const _LinkField({
+    required this.controller,
+    required this.busy,
+    required this.onFetch,
+  });
 
   final TextEditingController controller;
   final bool busy;
@@ -150,28 +196,43 @@ class _LinkField extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       padding: const EdgeInsets.fromLTRB(20, 6, 6, 6),
-      decoration: const ShapeDecoration(shape: StadiumBorder(), color: Pop.field),
-      child: Row(children: [
-        Expanded(
-          child: TextField(
-            controller: controller,
-            keyboardType: TextInputType.url,
-            textInputAction: TextInputAction.go,
-            onSubmitted: (_) => onFetch(),
-            style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w500),
-            decoration: const InputDecoration(
-              hintText: 'Paste a video link',
-              filled: false,
-              border: InputBorder.none,
-              isCollapsed: true,
-              contentPadding: EdgeInsets.symmetric(vertical: 14),
+      decoration: ShapeDecoration(
+        shape: const StadiumBorder(),
+        color: context.pop.field,
+      ),
+      child: Row(
+        children: [
+          Expanded(
+            child: TextField(
+              controller: controller,
+              keyboardType: TextInputType.url,
+              textInputAction: TextInputAction.go,
+              onSubmitted: (_) => onFetch(),
+              style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w500),
+              decoration: const InputDecoration(
+                hintText: 'Paste a video link',
+                filled: false,
+                border: InputBorder.none,
+                isCollapsed: true,
+                contentPadding: EdgeInsets.symmetric(vertical: 14),
+              ),
             ),
           ),
-        ),
-        if (controller.text.isNotEmpty && !busy)
-          IconButton(tooltip: 'Clear', onPressed: controller.clear, icon: const Icon(Icons.close_rounded, size: 20)),
-        PopButton(label: 'Fetch', onPressed: onFetch, busy: busy, expand: false, height: 48),
-      ]),
+          if (controller.text.isNotEmpty && !busy)
+            IconButton(
+              tooltip: 'Clear',
+              onPressed: controller.clear,
+              icon: const Icon(Icons.close_rounded, size: 20),
+            ),
+          PopButton(
+            label: 'Fetch',
+            onPressed: onFetch,
+            busy: busy,
+            expand: false,
+            height: 48,
+          ),
+        ],
+      ),
     );
   }
 }
@@ -188,9 +249,18 @@ class _PlatformChip extends StatelessWidget {
       duration: Pop.medium,
       curve: Curves.easeOutBack,
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-      decoration: ShapeDecoration(shape: const StadiumBorder(), color: active ? Pop.ink : Pop.softYellow),
-      child: Text(label,
-          style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: active ? Pop.yellow : Pop.ink)),
+      decoration: ShapeDecoration(
+        shape: const StadiumBorder(),
+        color: active ? context.pop.strong : context.pop.soft,
+      ),
+      child: Text(
+        label,
+        style: TextStyle(
+          fontSize: 13,
+          fontWeight: FontWeight.w600,
+          color: active ? context.pop.onStrong : context.pop.text,
+        ),
+      ),
     );
   }
 }
@@ -202,29 +272,52 @@ class _FetchingCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     Widget bar(double w, double h) => Container(
-          width: w,
-          height: h,
-          decoration: BoxDecoration(color: Pop.track, borderRadius: BorderRadius.circular(h)),
-        );
+      width: w,
+      height: h,
+      decoration: BoxDecoration(
+        color: context.pop.track,
+        borderRadius: BorderRadius.circular(h),
+      ),
+    );
     final card = Container(
       padding: const EdgeInsets.all(14),
-      decoration: const BoxDecoration(color: Pop.card, borderRadius: Pop.cardRadius),
-      child: Row(children: [
-        Container(width: 72, height: 72, decoration: const BoxDecoration(color: Pop.track, borderRadius: Pop.thumbRadius)),
-        const SizedBox(width: 14),
-        Expanded(
-          child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            bar(double.infinity, 14),
-            const SizedBox(height: 10),
-            bar(120, 12),
-            const SizedBox(height: 10),
-            const Text('Reading the link…', style: TextStyle(color: Pop.muted, fontSize: 13)),
-          ]),
-        ),
-      ]),
+      decoration: BoxDecoration(
+        color: context.pop.card,
+        borderRadius: Pop.cardRadius,
+      ),
+      child: Row(
+        children: [
+          Container(
+            width: 72,
+            height: 72,
+            decoration: BoxDecoration(
+              color: context.pop.track,
+              borderRadius: Pop.thumbRadius,
+            ),
+          ),
+          const SizedBox(width: 14),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                bar(double.infinity, 14),
+                const SizedBox(height: 10),
+                bar(120, 12),
+                const SizedBox(height: 10),
+                Text(
+                  'Reading the link…',
+                  style: TextStyle(color: context.pop.muted, fontSize: 13),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
     );
     if (Pop.reduceMotion(context)) return card;
-    return card.animate(onPlay: (c) => c.repeat()).shimmer(duration: 1200.ms, color: Colors.white);
+    return card
+        .animate(onPlay: (c) => c.repeat())
+        .shimmer(duration: 1200.ms, color: context.pop.bg);
   }
 }
 
@@ -242,19 +335,38 @@ class _ReadyCard extends StatelessWidget {
       onTap: onOpen,
       child: Container(
         padding: const EdgeInsets.all(14),
-        decoration: const BoxDecoration(color: Pop.softYellow, borderRadius: Pop.cardRadius),
-        child: Row(children: [
-          PopThumb(seed: info.url, url: info.thumbnail, size: 72),
-          const SizedBox(width: 14),
-          Expanded(
-            child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-              Text(info.title, maxLines: 2, overflow: TextOverflow.ellipsis, style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 15)),
-              const SizedBox(height: 4),
-              const Text('Choose format', style: TextStyle(fontWeight: FontWeight.w600)),
-            ]),
-          ),
-          const Icon(Icons.chevron_right_rounded),
-        ]),
+        decoration: BoxDecoration(
+          color: context.pop.soft,
+          borderRadius: Pop.cardRadius,
+        ),
+        child: Row(
+          children: [
+            PopThumb(seed: info.url, url: info.thumbnail, size: 72),
+            const SizedBox(width: 14),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    info.title,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(
+                      fontWeight: FontWeight.w700,
+                      fontSize: 15,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  const Text(
+                    'Choose format',
+                    style: TextStyle(fontWeight: FontWeight.w600),
+                  ),
+                ],
+              ),
+            ),
+            const Icon(Icons.chevron_right_rounded),
+          ],
+        ),
       ),
     );
   }
@@ -269,21 +381,41 @@ class _ErrorCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.fromLTRB(18, 16, 10, 8),
-      decoration: const BoxDecoration(color: Color(0xFFFFE1E1), borderRadius: Pop.cardRadius),
-      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-        const Text("Couldn't read that link", style: TextStyle(fontWeight: FontWeight.w800, fontSize: 16)),
-        const SizedBox(height: 4),
-        Text(message, maxLines: 4, overflow: TextOverflow.ellipsis),
-        Row(children: [
-          TextButton(onPressed: onRetry, child: const Text('Try again', style: TextStyle(fontWeight: FontWeight.w700))),
-          TextButton(
-            onPressed: () => Clipboard.setData(ClipboardData(text: message)),
-            child: const Text('Copy error'),
+          padding: const EdgeInsets.fromLTRB(18, 16, 10, 8),
+          decoration: BoxDecoration(
+            color: context.pop.errorSoft,
+            borderRadius: Pop.cardRadius,
           ),
-        ]),
-      ]),
-    ).animate(target: Pop.reduceMotion(context) ? null : 1).shakeX(hz: 4, amount: 4, duration: 350.ms);
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text(
+                "Couldn't read that link",
+                style: TextStyle(fontWeight: FontWeight.w800, fontSize: 16),
+              ),
+              const SizedBox(height: 4),
+              Text(message, maxLines: 4, overflow: TextOverflow.ellipsis),
+              Row(
+                children: [
+                  TextButton(
+                    onPressed: onRetry,
+                    child: const Text(
+                      'Try again',
+                      style: TextStyle(fontWeight: FontWeight.w700),
+                    ),
+                  ),
+                  TextButton(
+                    onPressed: () =>
+                        Clipboard.setData(ClipboardData(text: message)),
+                    child: const Text('Copy error'),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        )
+        .animate(target: Pop.reduceMotion(context) ? null : 1)
+        .shakeX(hz: 4, amount: 4, duration: 350.ms);
   }
 }
 
@@ -299,24 +431,53 @@ class _RecentRow extends StatelessWidget {
     final what = switch (mode) {
       DownloadMode.audioOnly => job.audioFormat.toUpperCase(),
       DownloadMode.subtitlesOnly => 'Subtitles',
-      _ => [job.container.toUpperCase(), if (job.maxHeight != null) '${job.maxHeight}p'].join(' · '),
+      _ => [
+        job.container.toUpperCase(),
+        if (job.maxHeight != null) '${job.maxHeight}p',
+      ].join(' · '),
     };
-    return Container(
-      margin: const EdgeInsets.only(bottom: 10),
-      padding: const EdgeInsets.all(10),
-      decoration: const BoxDecoration(color: Pop.card, borderRadius: Pop.cardRadius),
-      child: Row(children: [
-        PopThumb(seed: job.id, url: job.thumbnail, audio: audio, size: 52),
-        const SizedBox(width: 14),
-        Expanded(
-          child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            Text(job.title, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 15)),
-            const SizedBox(height: 2),
-            Text([job.site, what].whereType<String>().join(' · '), style: const TextStyle(color: Pop.muted, fontSize: 13)),
-          ]),
+    return GestureDetector(
+      onTap: () => openDownload(context, job.id),
+      behavior: HitTestBehavior.opaque,
+      child: Container(
+        margin: const EdgeInsets.only(bottom: 10),
+        padding: const EdgeInsets.all(10),
+        decoration: BoxDecoration(
+          color: context.pop.card,
+          borderRadius: Pop.cardRadius,
         ),
-        const Padding(padding: EdgeInsets.only(right: 6), child: Icon(Icons.check_circle_rounded, semanticLabel: 'Done')),
-      ]),
+        child: Row(
+          children: [
+            PopThumb(seed: job.id, url: job.thumbnail, audio: audio, size: 52),
+            const SizedBox(width: 14),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    job.title,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(
+                      fontWeight: FontWeight.w700,
+                      fontSize: 15,
+                    ),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    [job.site, what].whereType<String>().join(' · '),
+                    style: TextStyle(color: context.pop.muted, fontSize: 13),
+                  ),
+                ],
+              ),
+            ),
+            const Padding(
+              padding: EdgeInsets.only(right: 6),
+              child: Icon(Icons.chevron_right_rounded, semanticLabel: 'Open'),
+            ),
+          ],
+        ),
+      ),
     );
   }
 }

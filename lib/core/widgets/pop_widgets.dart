@@ -34,7 +34,8 @@ class _PopButtonState extends State<PopButton> {
   @override
   Widget build(BuildContext context) {
     final still = Pop.reduceMotion(context);
-    final fg = _enabled ? Pop.yellow : Pop.navIdle;
+    final c = context.pop;
+    final fg = _enabled ? c.onStrong : Pop.navIdle;
     return Semantics(
       button: true,
       enabled: _enabled,
@@ -59,7 +60,10 @@ class _PopButtonState extends State<PopButton> {
             height: widget.height,
             width: widget.expand ? double.infinity : null,
             padding: const EdgeInsets.symmetric(horizontal: 22),
-            decoration: ShapeDecoration(shape: const StadiumBorder(), color: _enabled ? Pop.ink : const Color(0xFF3A3A3A)),
+            decoration: ShapeDecoration(
+              shape: const StadiumBorder(),
+              color: _enabled ? c.strong : c.disabled,
+            ),
             alignment: Alignment.center,
             child: AnimatedSwitcher(
               duration: Pop.fast,
@@ -68,12 +72,29 @@ class _PopButtonState extends State<PopButton> {
                       key: const ValueKey('busy'),
                       width: 22,
                       height: 22,
-                      child: CircularProgressIndicator(strokeWidth: 2.5, color: fg),
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2.5,
+                        color: fg,
+                      ),
                     )
-                  : Row(key: ValueKey(widget.label), mainAxisSize: MainAxisSize.min, children: [
-                      if (widget.icon != null) ...[Icon(widget.icon, color: fg, size: 20), const SizedBox(width: 8)],
-                      Text(widget.label, style: TextStyle(color: fg, fontWeight: FontWeight.w700, fontSize: 16)),
-                    ]),
+                  : Row(
+                      key: ValueKey(widget.label),
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        if (widget.icon != null) ...[
+                          Icon(widget.icon, color: fg, size: 20),
+                          const SizedBox(width: 8),
+                        ],
+                        Text(
+                          widget.label,
+                          style: TextStyle(
+                            color: fg,
+                            fontWeight: FontWeight.w700,
+                            fontSize: 16,
+                          ),
+                        ),
+                      ],
+                    ),
             ),
           ),
         ),
@@ -84,12 +105,18 @@ class _PopButtonState extends State<PopButton> {
 
 /// Round icon button on a soft surface.
 class PopIconButton extends StatelessWidget {
-  const PopIconButton({super.key, required this.icon, required this.tooltip, required this.onPressed, this.background = Pop.field});
+  const PopIconButton({
+    super.key,
+    required this.icon,
+    required this.tooltip,
+    required this.onPressed,
+    this.background,
+  });
 
   final IconData icon;
   final String tooltip;
   final VoidCallback? onPressed;
-  final Color background;
+  final Color? background;
 
   @override
   Widget build(BuildContext context) {
@@ -101,7 +128,11 @@ class PopIconButton extends StatelessWidget {
               HapticFeedback.selectionClick();
               onPressed!();
             },
-      style: IconButton.styleFrom(backgroundColor: background, foregroundColor: Pop.ink, fixedSize: const Size(48, 48)),
+      style: IconButton.styleFrom(
+        backgroundColor: background ?? context.pop.field,
+        foregroundColor: context.pop.text,
+        fixedSize: const Size(48, 48),
+      ),
       icon: Icon(icon),
     );
   }
@@ -109,7 +140,13 @@ class PopIconButton extends StatelessWidget {
 
 /// Pill segmented control with a sliding black indicator.
 class PopSegmented<T> extends StatelessWidget {
-  const PopSegmented({super.key, required this.values, required this.labels, required this.selected, required this.onChanged});
+  const PopSegmented({
+    super.key,
+    required this.values,
+    required this.labels,
+    required this.selected,
+    required this.onChanged,
+  });
 
   final List<T> values;
   final List<String> labels;
@@ -123,60 +160,80 @@ class PopSegmented<T> extends StatelessWidget {
     return Container(
       height: 52,
       padding: const EdgeInsets.all(4),
-      decoration: const ShapeDecoration(shape: StadiumBorder(), color: Pop.field),
-      child: Stack(children: [
-        AnimatedAlign(
-          duration: Pop.reduceMotion(context) ? Duration.zero : Pop.medium,
-          curve: Curves.easeOutBack,
-          alignment: Alignment(n == 1 ? 0 : -1 + 2 * index / (n - 1), 0),
-          child: FractionallySizedBox(
-            widthFactor: 1 / n,
-            heightFactor: 1,
-            child: const DecoratedBox(decoration: ShapeDecoration(shape: StadiumBorder(), color: Pop.ink)),
-          ),
-        ),
-        Row(children: [
-          for (var i = 0; i < n; i++)
-            Expanded(
-              child: Semantics(
-                selected: i == index,
-                button: true,
-                child: InkWell(
-                  customBorder: const StadiumBorder(),
-                  onTap: () {
-                    HapticFeedback.selectionClick();
-                    onChanged(values[i]);
-                  },
-                  child: Center(
-                    child: AnimatedDefaultTextStyle(
-                      duration: Pop.fast,
-                      style: TextStyle(
-                        fontFamily: Pop.font,
-                        fontSize: 14,
-                        fontWeight: FontWeight.w700,
-                        color: i == index ? Pop.yellow : Pop.muted,
-                      ),
-                      child: Text(labels[i]),
-                    ),
-                  ),
+      decoration: ShapeDecoration(
+        shape: const StadiumBorder(),
+        color: context.pop.field,
+      ),
+      child: Stack(
+        children: [
+          AnimatedAlign(
+            duration: Pop.reduceMotion(context) ? Duration.zero : Pop.medium,
+            curve: Curves.easeOutBack,
+            alignment: Alignment(n == 1 ? 0 : -1 + 2 * index / (n - 1), 0),
+            child: FractionallySizedBox(
+              widthFactor: 1 / n,
+              heightFactor: 1,
+              child: DecoratedBox(
+                decoration: ShapeDecoration(
+                  shape: const StadiumBorder(),
+                  color: context.pop.strong,
                 ),
               ),
             ),
-        ]),
-      ]),
+          ),
+          Row(
+            children: [
+              for (var i = 0; i < n; i++)
+                Expanded(
+                  child: Semantics(
+                    selected: i == index,
+                    button: true,
+                    child: InkWell(
+                      customBorder: const StadiumBorder(),
+                      onTap: () {
+                        HapticFeedback.selectionClick();
+                        onChanged(values[i]);
+                      },
+                      child: Center(
+                        child: AnimatedDefaultTextStyle(
+                          duration: Pop.fast,
+                          style: TextStyle(
+                            fontFamily: Pop.font,
+                            fontSize: 14,
+                            fontWeight: FontWeight.w700,
+                            color: i == index
+                                ? context.pop.onStrong
+                                : context.pop.muted,
+                          ),
+                          child: Text(labels[i]),
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+            ],
+          ),
+        ],
+      ),
     );
   }
 }
 
 /// Chunky rounded progress bar that eases to each new value.
 class PopProgressBar extends StatelessWidget {
-  const PopProgressBar({super.key, required this.value, this.height = 10, this.color = Pop.ink, this.track = Pop.track});
+  const PopProgressBar({
+    super.key,
+    required this.value,
+    this.height = 10,
+    this.color,
+    this.track,
+  });
 
   /// 0..1, or null for "waiting".
   final double? value;
   final double height;
-  final Color color;
-  final Color track;
+  final Color? color;
+  final Color? track;
 
   @override
   Widget build(BuildContext context) {
@@ -188,16 +245,21 @@ class PopProgressBar extends StatelessWidget {
         child: SizedBox(
           height: height,
           child: ColoredBox(
-            color: track,
+            color: track ?? context.pop.track,
             child: TweenAnimationBuilder<double>(
               tween: Tween(end: target),
-              duration: Pop.reduceMotion(context) ? Duration.zero : const Duration(milliseconds: 450),
+              duration: Pop.reduceMotion(context)
+                  ? Duration.zero
+                  : const Duration(milliseconds: 450),
               curve: Curves.easeOutCubic,
               builder: (_, v, _) => FractionallySizedBox(
                 alignment: Alignment.centerLeft,
                 widthFactor: v,
                 child: DecoratedBox(
-                  decoration: BoxDecoration(color: color, borderRadius: BorderRadius.circular(height)),
+                  decoration: BoxDecoration(
+                    color: color ?? context.pop.strong,
+                    borderRadius: BorderRadius.circular(height),
+                  ),
                 ),
               ),
             ),
@@ -210,7 +272,14 @@ class PopProgressBar extends StatelessWidget {
 
 /// Rounded thumbnail with a tinted fallback and a play / music glyph.
 class PopThumb extends StatelessWidget {
-  const PopThumb({super.key, required this.seed, this.url, this.size = 56, this.audio = false, this.radius = Pop.thumbRadius});
+  const PopThumb({
+    super.key,
+    required this.seed,
+    this.url,
+    this.size = 56,
+    this.audio = false,
+    this.radius = Pop.thumbRadius,
+  });
 
   final String seed;
   final String? url;
@@ -220,8 +289,15 @@ class PopThumb extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final glyph = Icon(audio ? Icons.music_note_rounded : Icons.play_arrow_rounded, color: Pop.ink, size: size * 0.42);
-    final fallback = ColoredBox(color: Pop.tintFor(seed), child: Center(child: glyph));
+    final glyph = Icon(
+      audio ? Icons.music_note_rounded : Icons.play_arrow_rounded,
+      color: Pop.ink,
+      size: size * 0.42,
+    );
+    final fallback = ColoredBox(
+      color: Pop.tintFor(seed),
+      child: Center(child: glyph),
+    );
     return ClipRRect(
       borderRadius: radius,
       child: SizedBox(
@@ -229,10 +305,13 @@ class PopThumb extends StatelessWidget {
         height: size,
         child: url == null || audio
             ? fallback
-            : Image.network(url!, fit: BoxFit.cover, errorBuilder: (_, _, _) => fallback,
-                frameBuilder: (_, child, frame, sync) => sync || frame != null
-                    ? child
-                    : fallback),
+            : Image.network(
+                url!,
+                fit: BoxFit.cover,
+                errorBuilder: (_, _, _) => fallback,
+                frameBuilder: (_, child, frame, sync) =>
+                    sync || frame != null ? child : fallback,
+              ),
       ),
     );
   }
@@ -246,10 +325,17 @@ class PopSection extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Padding(
-        padding: const EdgeInsets.only(top: 8, bottom: 10),
-        child: Text(text.toUpperCase(),
-            style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700, letterSpacing: 1.2, color: Pop.muted)),
-      );
+    padding: const EdgeInsets.only(top: 8, bottom: 10),
+    child: Text(
+      text.toUpperCase(),
+      style: TextStyle(
+        fontSize: 12,
+        fontWeight: FontWeight.w700,
+        letterSpacing: 1.2,
+        color: context.pop.muted,
+      ),
+    ),
+  );
 }
 
 /// One tab in [PopTabBar].
@@ -263,7 +349,12 @@ class PopTab {
 
 /// Floating black pill tab bar; the active tab is a yellow pill.
 class PopTabBar extends StatelessWidget {
-  const PopTabBar({super.key, required this.tabs, required this.index, required this.onChanged});
+  const PopTabBar({
+    super.key,
+    required this.tabs,
+    required this.index,
+    required this.onChanged,
+  });
 
   final List<PopTab> tabs;
   final int index;
@@ -276,43 +367,147 @@ class PopTabBar extends StatelessWidget {
       child: Container(
         height: 68,
         padding: const EdgeInsets.all(8),
-        decoration: const ShapeDecoration(shape: StadiumBorder(), color: Pop.ink),
-        child: Row(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-          for (var i = 0; i < tabs.length; i++)
-            Expanded(
-              child: Semantics(
-                selected: i == index,
-                button: true,
-                label: tabs[i].badge > 0 ? '${tabs[i].label}, ${tabs[i].badge} active' : tabs[i].label,
-                excludeSemantics: true,
-                child: GestureDetector(
-                  behavior: HitTestBehavior.opaque,
-                  onTap: () {
-                    HapticFeedback.selectionClick();
-                    onChanged(i);
-                  },
-                  child: AnimatedContainer(
-                    duration: Pop.reduceMotion(context) ? Duration.zero : Pop.medium,
-                    curve: Curves.easeOutCubic,
-                    decoration: ShapeDecoration(shape: const StadiumBorder(), color: i == index ? Pop.yellow : Colors.transparent),
-                    child: Row(mainAxisAlignment: MainAxisAlignment.center, children: [
-                      Badge(
-                        isLabelVisible: tabs[i].badge > 0,
-                        backgroundColor: Pop.yellow,
-                        textColor: Pop.ink,
-                        label: Text('${tabs[i].badge}'),
-                        child: Icon(tabs[i].icon, color: i == index ? Pop.ink : Pop.navIdle),
+        decoration: ShapeDecoration(
+          shape: const StadiumBorder(),
+          color: context.pop.bar,
+        ),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            for (var i = 0; i < tabs.length; i++)
+              Expanded(
+                child: Semantics(
+                  selected: i == index,
+                  button: true,
+                  label: tabs[i].badge > 0
+                      ? '${tabs[i].label}, ${tabs[i].badge} active'
+                      : tabs[i].label,
+                  excludeSemantics: true,
+                  child: GestureDetector(
+                    behavior: HitTestBehavior.opaque,
+                    onTap: () {
+                      HapticFeedback.selectionClick();
+                      onChanged(i);
+                    },
+                    child: AnimatedContainer(
+                      duration: Pop.reduceMotion(context)
+                          ? Duration.zero
+                          : Pop.medium,
+                      curve: Curves.easeOutCubic,
+                      decoration: ShapeDecoration(
+                        shape: const StadiumBorder(),
+                        color: i == index ? Pop.yellow : Colors.transparent,
                       ),
-                      if (i == index) ...[
-                        const SizedBox(width: 8),
-                        Text(tabs[i].label, style: const TextStyle(fontWeight: FontWeight.w700, color: Pop.ink)),
-                      ],
-                    ]),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Badge(
+                            isLabelVisible: tabs[i].badge > 0,
+                            backgroundColor: Pop.yellow,
+                            textColor: Pop.ink,
+                            label: Text('${tabs[i].badge}'),
+                            child: Icon(
+                              tabs[i].icon,
+                              color: i == index ? Pop.ink : Pop.navIdle,
+                            ),
+                          ),
+                          if (i == index) ...[
+                            const SizedBox(width: 8),
+                            Text(
+                              tabs[i].label,
+                              style: const TextStyle(
+                                fontWeight: FontWeight.w700,
+                                color: Pop.ink,
+                              ),
+                            ),
+                          ],
+                        ],
+                      ),
+                    ),
                   ),
                 ),
               ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// Selectable option card: soft yellow with an outline when selected.
+class PopOptionTile extends StatelessWidget {
+  const PopOptionTile({
+    super.key,
+    required this.label,
+    this.size,
+    required this.selected,
+    required this.onTap,
+  });
+
+  final String label;
+  final String? size;
+  final bool selected;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 8),
+      child: Semantics(
+        selected: selected,
+        button: true,
+        child: InkWell(
+          borderRadius: Pop.cardRadius,
+          onTap: () {
+            HapticFeedback.selectionClick();
+            onTap();
+          },
+          child: AnimatedContainer(
+            duration: Pop.fast,
+            padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 16),
+            decoration: BoxDecoration(
+              color: selected ? context.pop.soft : context.pop.card,
+              borderRadius: Pop.cardRadius,
+              border: Border.all(
+                color: selected ? context.pop.text : Colors.transparent,
+                width: 2,
+              ),
             ),
-        ]),
+            child: Row(
+              children: [
+                AnimatedSwitcher(
+                  duration: Pop.fast,
+                  transitionBuilder: (child, a) =>
+                      ScaleTransition(scale: a, child: child),
+                  child: Icon(
+                    selected
+                        ? Icons.radio_button_checked_rounded
+                        : Icons.radio_button_off_rounded,
+                    key: ValueKey(selected),
+                    color: context.pop.text,
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Text(
+                  label,
+                  style: const TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+                const Spacer(),
+                if (size != null)
+                  Text(
+                    size!,
+                    style: TextStyle(
+                      color: context.pop.muted,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+              ],
+            ),
+          ),
+        ),
       ),
     );
   }

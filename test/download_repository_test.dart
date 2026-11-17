@@ -63,9 +63,9 @@ void main() {
   Future<void> settle() => Future<void>.delayed(const Duration(milliseconds: 20));
 
   test('runs at most two jobs and starts the next when one finishes', () async {
-    final a = await repo.enqueue(const DownloadRequest(info: info, mode: DownloadMode.videoAndAudio));
+    final a = await repo.enqueue(const DownloadRequest(info: info, mode: DownloadMode.video));
     final b = await repo.enqueue(const DownloadRequest(info: info, mode: DownloadMode.audioOnly));
-    final c = await repo.enqueue(const DownloadRequest(info: info, mode: DownloadMode.videoOnly));
+    final c = await repo.enqueue(const DownloadRequest(info: info, mode: DownloadMode.videoAndAudio));
     expect(engine.started.keys, [a, b]);
     expect((await jobs()).firstWhere((j) => j.id == c).status, JobStatus.queued);
 
@@ -90,7 +90,7 @@ void main() {
   });
 
   test('records errors and can retry', () async {
-    final id = await repo.enqueue(const DownloadRequest(info: info, mode: DownloadMode.videoAndAudio));
+    final id = await repo.enqueue(const DownloadRequest(info: info, mode: DownloadMode.video));
     engine.emit(EngineEvent(id: id, status: 'error', error: 'HTTP 403'));
     await settle();
     var job = (await jobs()).single;
@@ -105,9 +105,9 @@ void main() {
   });
 
   test('cancels queued jobs locally and running jobs through the engine', () async {
-    final a = await repo.enqueue(const DownloadRequest(info: info, mode: DownloadMode.videoAndAudio));
-    await repo.enqueue(const DownloadRequest(info: info, mode: DownloadMode.videoAndAudio));
-    final c = await repo.enqueue(const DownloadRequest(info: info, mode: DownloadMode.videoAndAudio));
+    final a = await repo.enqueue(const DownloadRequest(info: info, mode: DownloadMode.video));
+    await repo.enqueue(const DownloadRequest(info: info, mode: DownloadMode.video));
+    final c = await repo.enqueue(const DownloadRequest(info: info, mode: DownloadMode.video));
 
     await repo.cancel(c);
     expect((await jobs()).firstWhere((j) => j.id == c).status, JobStatus.canceled);
@@ -117,7 +117,7 @@ void main() {
 
   test('resume puts jobs that were running back in the queue', () async {
     repo.maxParallel = 0;
-    final id = await repo.enqueue(const DownloadRequest(info: info, mode: DownloadMode.videoAndAudio));
+    final id = await repo.enqueue(const DownloadRequest(info: info, mode: DownloadMode.video));
     await (db.update(db.downloadJobs)).write(const DownloadJobsCompanion(status: Value(JobStatus.running)));
     repo.maxParallel = 2;
     await repo.resume();
@@ -125,7 +125,7 @@ void main() {
   });
 
   test('throttles progress writes to whole percents', () async {
-    final id = await repo.enqueue(const DownloadRequest(info: info, mode: DownloadMode.videoAndAudio));
+    final id = await repo.enqueue(const DownloadRequest(info: info, mode: DownloadMode.video));
     engine.emit(EngineEvent(id: id, status: 'running', progress: 10.2));
     engine.emit(EngineEvent(id: id, status: 'running', progress: 10.6));
     await settle();

@@ -1,0 +1,6 @@
+First release.
+- Download video, audio or subtitles from 1,800+ sites
+- Share links into Grab; copied-link offer
+- Background downloads with notifications
+- Library with player, search and filters
+- Settings for formats, quality and theme; in-app engine updates
