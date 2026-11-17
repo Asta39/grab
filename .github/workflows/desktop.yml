@@ -39,6 +39,10 @@ jobs:
     runs-on: macos-15
     steps:
       - uses: actions/checkout@v4
+      # Some plugins need the newest macOS SDK; use the latest Xcode on the runner.
+      - uses: maxim-lobanov/setup-xcode@v1
+        with:
+          xcode-version: latest-stable
       - uses: subosito/flutter-action@v2
         with:
           channel: stable
