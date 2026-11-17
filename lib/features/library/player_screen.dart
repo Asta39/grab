@@ -4,6 +4,8 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:video_player/video_player.dart';
 
+import '../../core/utils/platform.dart';
+
 import '../../core/theme/pop_theme.dart';
 import '../../core/widgets/pop_widgets.dart';
 import 'audio_player_screen.dart';
@@ -35,7 +37,7 @@ class _PlayerScreenState extends State<PlayerScreen> {
   late final VideoPlayerController _c = VideoPlayerController.file(
     File(widget.item.path),
     // A real Android view: the texture path shows no picture on some phones.
-    viewType: VideoViewType.platformView,
+    viewType: videoViewType,
     // Play even while a call or other app holds the audio; otherwise Android
     // silently holds playback back and the preview just sits there.
     videoPlayerOptions: VideoPlayerOptions(mixWithOthers: true),

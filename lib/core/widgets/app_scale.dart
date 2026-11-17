@@ -1,3 +1,4 @@
+import 'dart:io';
 import 'dart:math' as math;
 
 import 'package:flutter/widgets.dart';
@@ -21,6 +22,8 @@ class AppScale extends StatelessWidget {
 
   /// The zoom applied for a screen of [size].
   static double factorFor(Size size) {
+    // A desktop window is sized by the user; keep the design at 1x there.
+    if (!(Platform.isAndroid || Platform.isIOS)) return 1;
     final shortest = math.min(size.width, size.height);
     if (shortest <= 0) return 1;
     return (shortest / designWidth).clamp(0.9, 1.4);

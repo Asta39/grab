@@ -48,17 +48,32 @@ class Release {
     publishedAt: DateTime.tryParse('${j['published_at']}'),
     assets: [
       for (final a in (j['assets'] as List? ?? const []).whereType<Map>())
-        if ('${a['name']}'.toLowerCase().endsWith('.apk'))
-          ReleaseAsset(
-            '${a['name']}',
-            '${a['browser_download_url']}',
-            (a['size'] as num?)?.toInt() ?? 0,
-          ),
+        ReleaseAsset(
+          '${a['name']}',
+          '${a['browser_download_url']}',
+          (a['size'] as num?)?.toInt() ?? 0,
+        ),
     ],
   );
 
+  /// The download for this device: the right APK on Android, the macOS or
+  /// Windows package on a computer.
+  ReleaseAsset? assetFor(List<String> abis) {
+    if (Platform.isMacOS || Platform.isWindows) {
+      final key = Platform.isMacOS ? 'macos' : 'windows';
+      return assets
+          .where((a) => a.name.toLowerCase().contains(key))
+          .firstOrNull;
+    }
+    return apkFor(abis);
+  }
+
   /// The APK built for this phone: its ABI first, then a universal build.
-  ReleaseAsset? apkFor(List<String> abis) {
+  ReleaseAsset? apkFor(List<String> all) {
+    final abis = all;
+    final assets = this.assets
+        .where((a) => a.name.toLowerCase().endsWith('.apk'))
+        .toList();
     for (final abi in abis) {
       final hit = assets.where((a) => a.name.contains(abi)).firstOrNull;
       if (hit != null) return hit;
@@ -107,8 +122,9 @@ Future<Release?> fetchLatestRelease() async {
 }
 
 /// ABIs this phone runs, best first.
-Future<List<String>> phoneAbis() async =>
-    (await _channel.invokeListMethod<String>('abis')) ?? const [];
+Future<List<String>> phoneAbis() async => Platform.isAndroid
+    ? (await _channel.invokeListMethod<String>('abis')) ?? const []
+    : const [];
 
 /// Downloads [asset] into the app's cache. [onProgress] gets 0..1.
 Future<File> downloadUpdate(
@@ -145,9 +161,28 @@ Future<File> downloadUpdate(
 /// Hands the APK to Android's installer, which updates Grab in place
 /// (same app, newer version: downloads, settings and history are kept).
 /// Returns false when the user first has to allow Grab to install apps.
-Future<bool> installUpdate(File apk) async =>
-    await _channel.invokeMethod<String>('installApk', {'path': apk.path}) ==
-    'started';
+Future<bool> installUpdate(File file) async {
+  if (Platform.isMacOS) {
+    // Opens the disk image; drag Grab to Applications to replace the old one.
+    await Process.run('open', [file.path]);
+    return true;
+  }
+  if (Platform.isWindows) {
+    await Process.run('explorer', [file.path]);
+    return true;
+  }
+  return await _channel.invokeMethod<String>('installApk', {
+        'path': file.path,
+      }) ==
+      'started';
+}
 
-Future<void> openUrl(String url) =>
-    _channel.invokeMethod('openUrl', {'url': url});
+Future<void> openUrl(String url) async {
+  if (Platform.isMacOS) {
+    await Process.run('open', [url]);
+  } else if (Platform.isWindows) {
+    await Process.run('rundll32', ['url.dll,FileProtocolHandler', url]);
+  } else {
+    await _channel.invokeMethod('openUrl', {'url': url});
+  }
+}

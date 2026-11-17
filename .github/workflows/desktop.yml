@@ -1,0 +1,62 @@
+name: Desktop
+
+# Builds Grab for Windows and macOS. Run it by hand to test, or publish a
+# GitHub release and the packages are attached to it automatically.
+on:
+  workflow_dispatch:
+  pull_request:
+  release:
+    types: [published]
+
+permissions:
+  contents: write
+
+jobs:
+  windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+      - run: flutter pub get
+      - run: flutter build windows --release
+      - name: Package
+        shell: pwsh
+        run: Compress-Archive -Path build/windows/x64/runner/Release/* -DestinationPath grab-windows-x64.zip
+      - uses: actions/upload-artifact@v4
+        with:
+          name: grab-windows
+          path: grab-windows-x64.zip
+      - name: Attach to release
+        if: github.event_name == 'release'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release upload "${{ github.event.release.tag_name }}" grab-windows-x64.zip --clobber
+
+  macos:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+      - run: flutter pub get
+      - run: flutter build macos --release
+      - name: Package
+        run: |
+          mkdir dmg
+          cp -R build/macos/Build/Products/Release/Grab.app dmg/
+          ln -s /Applications dmg/Applications
+          hdiutil create -volname Grab -srcfolder dmg -ov -format UDZO grab-macos.dmg
+      - uses: actions/upload-artifact@v4
+        with:
+          name: grab-macos
+          path: grab-macos.dmg
+      - name: Attach to release
+        if: github.event_name == 'release'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release upload "${{ github.event.release.tag_name }}" grab-macos.dmg --clobber

@@ -300,7 +300,8 @@ class PopThumb extends StatelessWidget {
     final glyph = Icon(
       audio ? Icons.music_note_rounded : Icons.play_arrow_rounded,
       color: Pop.ink,
-      size: size * 0.42,
+      // Fill-the-space thumbs pass an infinite size; give the glyph a real one.
+      size: size.isFinite ? size * 0.42 : 56,
     );
     final fallback = ColoredBox(
       color: Pop.tintFor(seed),

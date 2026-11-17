@@ -254,10 +254,10 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen> {
                           child: Chip(
                             avatar: const Icon(Icons.sort_rounded, size: 18),
                             label: Text(_sort.label),
-                          labelStyle: TextStyle(
-                            fontWeight: FontWeight.w600,
-                            color: context.pop.text,
-                          ),
+                            labelStyle: TextStyle(
+                              fontWeight: FontWeight.w600,
+                              color: context.pop.text,
+                            ),
                           ),
                         ),
                         const SizedBox(width: 8),

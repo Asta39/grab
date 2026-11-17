@@ -9,6 +9,7 @@ import 'package:permission_handler/permission_handler.dart';
 import '../../app/providers.dart';
 import '../../core/theme/pop_theme.dart';
 import '../../core/utils/permissions.dart';
+import '../../core/utils/platform.dart';
 import '../../core/widgets/dock_inset.dart';
 import '../../core/widgets/pop_widgets.dart';
 import '../../core/widgets/toasts.dart';
@@ -205,29 +206,31 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
               ),
             ),
             const SizedBox(height: 16),
-            const PopSection('Notifications'),
-            _Group(
-              children: [
-                FutureBuilder<PermissionStatus>(
-                  key: ValueKey(_permCheck),
-                  future: notificationStatus(),
-                  builder: (context, snap) {
-                    final on = snap.data?.isGranted ?? false;
-                    return _Row(
-                      label: 'Download alerts',
-                      value: snap.data == null ? '' : (on ? 'On' : 'Off'),
-                      onTap: on
-                          ? null
-                          : () async {
-                              await requestNotifications();
-                              if (mounted) setState(() => _permCheck++);
-                            },
-                    );
-                  },
-                ),
-              ],
-            ),
-            const SizedBox(height: 16),
+            if (isPhone) ...[
+              const PopSection('Notifications'),
+              _Group(
+                children: [
+                  FutureBuilder<PermissionStatus>(
+                    key: ValueKey(_permCheck),
+                    future: notificationStatus(),
+                    builder: (context, snap) {
+                      final on = snap.data?.isGranted ?? false;
+                      return _Row(
+                        label: 'Download alerts',
+                        value: snap.data == null ? '' : (on ? 'On' : 'Off'),
+                        onTap: on
+                            ? null
+                            : () async {
+                                await requestNotifications();
+                                if (mounted) setState(() => _permCheck++);
+                              },
+                      );
+                    },
+                  ),
+                ],
+              ),
+              const SizedBox(height: 16),
+            ],
             const PopSection('Appearance'),
             PopSegmented<ThemeMode>(
               values: const [ThemeMode.system, ThemeMode.light, ThemeMode.dark],

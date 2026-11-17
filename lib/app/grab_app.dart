@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:io';
 
 import 'package:confetti/confetti.dart';
 import 'package:flutter/material.dart';
@@ -115,8 +116,12 @@ class _ShellState extends ConsumerState<_Shell> with WidgetsBindingObserver {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
     // A link shared to Grab while it was closed, then any shared while it is open.
-    ReceiveSharingIntent.instance.getInitialMedia().then(_onShared);
-    _shares = ReceiveSharingIntent.instance.getMediaStream().listen(_onShared);
+    if (Platform.isAndroid) {
+      ReceiveSharingIntent.instance.getInitialMedia().then(_onShared);
+      _shares = ReceiveSharingIntent.instance.getMediaStream().listen(
+        _onShared,
+      );
+    }
     WidgetsBinding.instance.addPostFrameCallback((_) => _offerClipboard());
     // Quick Settings tile: open Grab and fetch whatever link is copied.
     _launch.setMethodCallHandler((call) async {

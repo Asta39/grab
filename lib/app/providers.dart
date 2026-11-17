@@ -9,7 +9,7 @@ import '../data/settings/app_settings.dart';
 
 /// App-wide singletons. Screens read these; nothing else creates them.
 
-final engineProvider = Provider<EngineChannel>((ref) => EngineChannel());
+final engineProvider = Provider<Engine>((ref) => Engine.instance);
 
 final databaseProvider = Provider<AppDatabase>((ref) {
   final db = AppDatabase();
