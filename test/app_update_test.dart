@@ -29,7 +29,7 @@ void main() {
       ],
     });
     expect(r.version, '1.1.0');
-    expect(r.assets, hasLength(3));
+    expect(r.assets, hasLength(4)); // every file; apkFor picks among the APKs
     expect(r.apkFor(['arm64-v8a', 'armeabi-v7a'])!.url, 'b');
     expect(r.apkFor(['x86_64'])!.url, 'u');
   });

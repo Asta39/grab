@@ -4,6 +4,8 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:video_player/video_player.dart';
 
+import '../../core/utils/platform.dart';
+
 import '../../core/theme/pop_theme.dart';
 import '../../core/utils/haptics.dart';
 import '../../core/widgets/pop_widgets.dart';
@@ -89,19 +91,19 @@ class _ClipPreviewState extends State<ClipPreview> {
           Uri.parse(s.url!),
           httpHeaders: s.headers,
           // A real Android view: the texture path shows no picture on some phones.
-          viewType: VideoViewType.platformView,
+          viewType: videoViewType,
           videoPlayerOptions: _options,
         ),
       );
     }
     if (c == null && _canCopy) {
       try {
-        final path = await EngineChannel().previewFile(widget.info.url);
+        final path = await Engine.instance.previewFile(widget.info.url);
         if (path != null) {
           c = await _open(
             VideoPlayerController.file(
               File(path),
-              viewType: VideoViewType.platformView,
+              viewType: videoViewType,
               videoPlayerOptions: _options,
             ),
           );

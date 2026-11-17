@@ -3,6 +3,7 @@ import 'package:just_audio/just_audio.dart';
 import 'package:just_audio_background/just_audio_background.dart';
 
 import '../../features/library/library_items.dart';
+import '../utils/platform.dart';
 
 /// The one audio player in the app. It keeps playing with the screen off or the
 /// app in the background, with controls in the notification and on the lock screen.
@@ -13,7 +14,12 @@ abstract final class AudioPlayback {
   static final current = ValueNotifier<LibraryItem?>(null);
 
   /// Call once in main(), before runApp.
-  static Future<void> init() => JustAudioBackground.init(
+  static Future<void> init() async {
+    // Lock-screen and notification controls are a phone thing.
+    if (isPhone) await _initBackground();
+  }
+
+  static Future<void> _initBackground() => JustAudioBackground.init(
     androidNotificationChannelId: 'app.grab.grab.playback',
     androidNotificationChannelName: 'Playback',
     androidNotificationOngoing: true,

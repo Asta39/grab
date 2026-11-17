@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:device_info_plus/device_info_plus.dart';
 import 'package:flutter/material.dart';
 import 'package:permission_handler/permission_handler.dart';
@@ -16,6 +18,8 @@ Future<bool> ensureDownloadPermissions(
   BuildContext context,
   SharedPreferences prefs,
 ) async {
+  // Computers need no permission prompts to save into Downloads.
+  if (!Platform.isAndroid) return true;
   final sdk = (await DeviceInfoPlugin().androidInfo).version.sdkInt;
 
   if (sdk <= 28) {
@@ -62,10 +66,13 @@ Future<bool> ensureDownloadPermissions(
 }
 
 /// Current notification permission, for Settings.
-Future<PermissionStatus> notificationStatus() => Permission.notification.status;
+Future<PermissionStatus> notificationStatus() async => Platform.isAndroid
+    ? Permission.notification.status
+    : PermissionStatus.granted;
 
 /// Ask again, or send the user to system settings if Android won't ask anymore.
 Future<PermissionStatus> requestNotifications() async {
+  if (!Platform.isAndroid) return PermissionStatus.granted;
   final s = await Permission.notification.status;
   if (s.isPermanentlyDenied) return _settings(Permission.notification);
   return Permission.notification.request();

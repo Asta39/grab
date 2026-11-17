@@ -6,6 +6,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../../core/theme/pop_theme.dart';
 import '../../core/utils/haptics.dart';
 import '../../core/utils/permissions.dart';
+import '../../core/utils/platform.dart';
 
 /// Three short pages shown on first launch.
 class WelcomeScreen extends StatefulWidget {
@@ -30,7 +31,7 @@ class _Page {
   final List<String> steps;
 }
 
-const _pages = [
+const _phonePages = [
   _Page(
     Icons.download_rounded,
     'Paste a link.\nGet the file.',
@@ -64,6 +65,27 @@ const _pages = [
     ],
   ),
 ];
+
+const _desktopPages = [
+  _Page(
+    Icons.download_rounded,
+    'Paste a link.\nGet the file.',
+    'Video, audio or subtitles from YouTube, TikTok, Instagram, Pinterest and 1,800+ more sites. Free, no account, no ads.',
+    [],
+  ),
+  _Page(
+    Icons.content_paste_rounded,
+    'Copy, then\ngrab it',
+    'The fastest way in, from any browser:',
+    [
+      'Copy a video link',
+      'Switch to Grab',
+      'Tap "Grab it" on the card that pops up',
+    ],
+  ),
+];
+
+List<_Page> get _pages => isPhone ? _phonePages : _desktopPages;
 
 class _WelcomeScreenState extends State<WelcomeScreen> {
   final _pager = PageController();
@@ -107,7 +129,7 @@ class _WelcomeScreenState extends State<WelcomeScreen> {
                 child: TextButton(
                   onPressed: widget.onDone,
                   child: Text(
-                    last ? 'Not now' : 'Skip',
+                    last && isPhone ? 'Not now' : 'Skip',
                     style: const TextStyle(
                       color: Pop.ink,
                       fontWeight: FontWeight.w700,
@@ -251,7 +273,9 @@ class _WelcomeScreenState extends State<WelcomeScreen> {
                             vertical: 16,
                           ),
                           child: Text(
-                            last ? 'Allow & start' : 'Next',
+                            last
+                                ? (isPhone ? 'Allow & start' : "Let's go")
+                                : 'Next',
                             style: const TextStyle(
                               color: Pop.yellow,
                               fontWeight: FontWeight.w800,

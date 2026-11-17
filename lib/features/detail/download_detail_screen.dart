@@ -6,6 +6,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:video_player/video_player.dart';
 
+import '../../core/utils/platform.dart';
+
 import '../../app/providers.dart';
 import '../../core/audio/audio_playback.dart';
 import '../../core/theme/pop_theme.dart';
@@ -212,7 +214,7 @@ class _PreviewState extends State<_Preview> {
   late final VideoPlayerController _c = VideoPlayerController.file(
     File(widget.path),
     // A real Android view: the texture path shows no picture on some phones.
-    viewType: VideoViewType.platformView,
+    viewType: videoViewType,
     // Play even while a call or other app holds the audio; otherwise Android
     // silently holds playback back and the preview just sits there.
     videoPlayerOptions: VideoPlayerOptions(mixWithOthers: true),
@@ -524,7 +526,7 @@ class _FileRow extends ConsumerWidget {
               onPressed: () => openPlayer(context, item),
               icon: const Icon(Icons.play_arrow_rounded),
             ),
-          if (exists && kind != LibraryKind.subtitles)
+          if (exists && kind != LibraryKind.subtitles && isPhone)
             IconButton(
               tooltip: 'Make ringtone',
               onPressed: () => showRingtoneSheet(context, item),

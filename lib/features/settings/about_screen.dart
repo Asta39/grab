@@ -54,7 +54,7 @@ class _AboutScreenState extends State<AboutScreen> {
       final newer = r != null && isNewerVersion(r.version, _app!.version);
       setState(() {
         _release = r;
-        _asset = newer ? r.apkFor(abis) : null;
+        _asset = newer ? r.assetFor(abis) : null;
         _stage = newer ? _Stage.available : _Stage.upToDate;
       });
       if (newer) Haptics.success();
