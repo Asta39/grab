@@ -1,14 +1,18 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../app/providers.dart';
 import '../../core/theme/pop_theme.dart';
+import '../../core/utils/links.dart';
+import '../../core/widgets/pop_widgets.dart';
+import '../../data/db/app_database.dart';
 import '../../data/engine/media_info.dart';
 import 'fetch_controller.dart';
+import 'format_sheet.dart';
 
-/// Home: paste a link, fetch it, choose what to download.
-/// Pop styling and motion are finished in milestone 3.
+/// Home: paste or share a link, fetch it, then choose a format in the sheet.
 class HomeScreen extends ConsumerStatefulWidget {
   const HomeScreen({super.key, this.onQueued});
 
@@ -16,11 +20,17 @@ class HomeScreen extends ConsumerStatefulWidget {
   final VoidCallback? onQueued;
 
   @override
-  ConsumerState<HomeScreen> createState() => _HomeScreenState();
+  ConsumerState<HomeScreen> createState() => HomeScreenState();
 }
 
-class _HomeScreenState extends ConsumerState<HomeScreen> {
+class HomeScreenState extends ConsumerState<HomeScreen> {
   final _url = TextEditingController();
+
+  @override
+  void initState() {
+    super.initState();
+    _url.addListener(() => setState(() {}));
+  }
 
   @override
   void dispose() {
@@ -28,180 +38,285 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     super.dispose();
   }
 
+  /// Fills the field with [link] and fetches it. Used by paste, share and the clipboard offer.
+  void fetchLink(String link) {
+    _url.text = link;
+    _fetch();
+  }
+
   Future<void> _paste() async {
     final data = await Clipboard.getData(Clipboard.kTextPlain);
-    if (data?.text == null) return;
-    _url.text = data!.text!.trim();
-    _fetch();
+    final link = extractLink(data?.text) ?? data?.text?.trim();
+    if (link == null || link.isEmpty) return;
+    fetchLink(link);
   }
 
   void _fetch() {
     FocusScope.of(context).unfocus();
-    ref.read(fetchControllerProvider.notifier).fetch(_url.text);
-  }
-
-  Future<void> _download() async {
-    final id = await ref.read(fetchControllerProvider.notifier).download();
-    if (id == null || !mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Added to downloads')));
-    widget.onQueued?.call();
+    final link = extractLink(_url.text) ?? _url.text.trim();
+    if (link.isEmpty) return;
+    if (link != _url.text) _url.text = link;
+    ref.read(fetchControllerProvider.notifier).fetch(link);
   }
 
   @override
   Widget build(BuildContext context) {
+    // Open the format sheet as soon as a fetch succeeds.
+    ref.listen(fetchControllerProvider.select((s) => s.info), (prev, next) async {
+      if (prev is AsyncLoading && next is AsyncData && next.value != null) {
+        HapticFeedback.lightImpact();
+        if (await showFormatSheet(context)) widget.onQueued?.call();
+      }
+    });
+
     final s = ref.watch(fetchControllerProvider);
-    final c = ref.read(fetchControllerProvider.notifier);
     final version = ref.watch(engineVersionProvider);
-    final text = Theme.of(context).textTheme;
+    final recent = (ref.watch(jobsProvider).value ?? const <DownloadJob>[])
+        .where((j) => j.status == JobStatus.done)
+        .take(3)
+        .toList();
+    final detected = platformOf(extractLink(_url.text) ?? _url.text);
+    final still = Pop.reduceMotion(context);
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Grab', style: TextStyle(fontWeight: FontWeight.w800, fontSize: 24))),
-      body: ListView(
-        padding: const EdgeInsets.fromLTRB(20, 8, 20, 32),
-        children: [
-          Text('Paste a link.\nGet the file.', style: text.displaySmall?.copyWith(fontWeight: FontWeight.w800, color: Pop.ink, height: 1.05)),
-          const SizedBox(height: 20),
-          TextField(
-            controller: _url,
-            keyboardType: TextInputType.url,
-            textInputAction: TextInputAction.go,
-            onSubmitted: (_) => _fetch(),
-            decoration: InputDecoration(
-              hintText: 'TikTok, YouTube, Instagram, Pinterest…',
-              suffixIcon: IconButton(onPressed: _paste, tooltip: 'Paste and fetch', icon: const Icon(Icons.content_paste_rounded)),
+      body: SafeArea(
+        bottom: false,
+        child: ListView(
+          padding: const EdgeInsets.fromLTRB(24, 12, 24, 120),
+          children: [
+            Row(children: [
+              const Text('Grab', style: TextStyle(fontSize: 26, fontWeight: FontWeight.w800, letterSpacing: -0.5)),
+              const Spacer(),
+              PopIconButton(icon: Icons.content_paste_rounded, tooltip: 'Paste link and fetch', onPressed: _paste),
+            ]),
+            const SizedBox(height: 28),
+            const Text('Paste a link.\nGet the file.',
+                    style: TextStyle(fontSize: 46, fontWeight: FontWeight.w800, height: 1.02, letterSpacing: -0.6))
+                .animate(target: still ? null : 1)
+                .fadeIn(duration: 400.ms)
+                .slideY(begin: 0.2, end: 0, curve: Curves.easeOutCubic),
+            const SizedBox(height: 24),
+            _LinkField(controller: _url, busy: s.info.isLoading, onFetch: _fetch),
+            const SizedBox(height: 14),
+            Wrap(spacing: 8, runSpacing: 8, children: [
+              for (final p in platforms) _PlatformChip(label: p, active: p == detected),
+              const _PlatformChip(label: '+ 1,800 more', active: false),
+            ]),
+            const SizedBox(height: 8),
+            Text(
+              version.when(
+                data: (v) => 'yt-dlp ${v ?? ''}',
+                loading: () => 'Starting engine…',
+                error: (e, _) => 'Engine failed to start',
+              ),
+              style: const TextStyle(fontSize: 12, color: Pop.muted),
             ),
-          ),
-          const SizedBox(height: 12),
-          FilledButton(
-            onPressed: s.info.isLoading ? null : _fetch,
-            child: Text(s.info.isLoading ? 'Fetching…' : 'Fetch'),
-          ),
-          const SizedBox(height: 8),
-          Text(
-            version.when(
-              data: (v) => 'Engine: yt-dlp ${v ?? 'unknown'}',
-              loading: () => 'Starting engine…',
-              error: (e, _) => 'Engine failed to start: $e',
-            ),
-            style: text.bodySmall?.copyWith(color: Pop.muted),
-          ),
-          ...switch (s.info) {
-            AsyncError(:final error) => [const SizedBox(height: 16), _ErrorBox(message: '$error', onRetry: _fetch)],
-            AsyncData(:final value?) => _choose(context, value, s, c),
-            _ => const <Widget>[],
-          },
-        ],
+            ...switch (s.info) {
+              AsyncLoading() => [const SizedBox(height: 24), const _FetchingCard()],
+              AsyncError(:final error) => [const SizedBox(height: 24), _ErrorCard(message: '$error', onRetry: _fetch)],
+              AsyncData(:final value?) => [
+                  const SizedBox(height: 24),
+                  _ReadyCard(info: value, onOpen: () async {
+                    if (await showFormatSheet(context)) widget.onQueued?.call();
+                  }),
+                ],
+              _ => const <Widget>[],
+            },
+            if (recent.isNotEmpty) ...[
+              const SizedBox(height: 28),
+              const PopSection('Recent'),
+              for (final (i, j) in recent.indexed)
+                _RecentRow(job: j)
+                    .animate(target: still ? null : 1)
+                    .fadeIn(duration: Pop.medium, delay: (60 * i).ms)
+                    .slideX(begin: 0.08, end: 0, curve: Curves.easeOutCubic),
+            ],
+          ],
+        ),
       ),
     );
   }
+}
 
-  List<Widget> _choose(BuildContext context, MediaInfo info, FetchState s, FetchController c) {
-    final text = Theme.of(context).textTheme;
-    return [
-      const SizedBox(height: 24),
-      if (info.thumbnail != null)
-        ClipRRect(
-          borderRadius: Pop.cardRadius,
-          child: AspectRatio(
-            aspectRatio: 16 / 9,
-            child: Image.network(info.thumbnail!, fit: BoxFit.cover,
-                errorBuilder: (_, _, _) => const ColoredBox(color: Pop.softYellow)),
+/// Pill text field with the Fetch button inside it.
+class _LinkField extends StatelessWidget {
+  const _LinkField({required this.controller, required this.busy, required this.onFetch});
+
+  final TextEditingController controller;
+  final bool busy;
+  final VoidCallback onFetch;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.fromLTRB(20, 6, 6, 6),
+      decoration: const ShapeDecoration(shape: StadiumBorder(), color: Pop.field),
+      child: Row(children: [
+        Expanded(
+          child: TextField(
+            controller: controller,
+            keyboardType: TextInputType.url,
+            textInputAction: TextInputAction.go,
+            onSubmitted: (_) => onFetch(),
+            style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w500),
+            decoration: const InputDecoration(
+              hintText: 'Paste a video link',
+              filled: false,
+              border: InputBorder.none,
+              isCollapsed: true,
+              contentPadding: EdgeInsets.symmetric(vertical: 14),
+            ),
           ),
         ),
-      const SizedBox(height: 12),
-      Text(info.title, style: text.titleLarge?.copyWith(fontWeight: FontWeight.w700)),
-      Text([info.site, info.uploader, if (info.isPlaylist) '${info.entryCount} items'].whereType<String>().join(' · '),
-          style: text.bodyMedium?.copyWith(color: Pop.muted)),
-      const SizedBox(height: 16),
-      SegmentedButton<DownloadMode>(
-        showSelectedIcon: false,
-        segments: [
-          const ButtonSegment(value: DownloadMode.videoAndAudio, label: Text('Video')),
-          const ButtonSegment(value: DownloadMode.videoOnly, label: Text('No sound')),
-          const ButtonSegment(value: DownloadMode.audioOnly, label: Text('Audio')),
-          if (info.subtitles.isNotEmpty) const ButtonSegment(value: DownloadMode.subtitlesOnly, label: Text('Subs')),
-        ],
-        selected: {s.mode},
-        onSelectionChanged: (v) => c.setMode(v.first),
-      ),
-      const SizedBox(height: 8),
-      if (s.mode != DownloadMode.subtitlesOnly)
-        RadioGroup<int>(
-          groupValue: s.optionIndex,
-          onChanged: (v) => c.setOption(v ?? 0),
-          child: Column(children: [
-            for (final (i, o) in s.options.indexed)
-              RadioListTile<int>(value: i, title: Text(o.label), secondary: Text(formatBytes(o.bytes) ?? '')),
-          ]),
-        ),
-      if (s.mode != DownloadMode.audioOnly) ..._subtitles(context, info, s, c),
-      const SizedBox(height: 16),
-      FilledButton(
-        onPressed: s.canDownload ? _download : null,
-        child: Text(switch (s.mode) {
-          DownloadMode.subtitlesOnly => s.subLangs.isEmpty ? 'Pick a language' : 'Download subtitles',
-          _ => ['Download', ?formatBytes(s.selected?.bytes)].join(' · '),
-        }),
-      ),
-    ];
-  }
-
-  List<Widget> _subtitles(BuildContext context, MediaInfo info, FetchState s, FetchController c) {
-    if (info.subtitles.isEmpty) {
-      return [
-        const SizedBox(height: 8),
-        Text('No subtitles available for this link.', style: TextStyle(color: Pop.muted)),
-      ];
-    }
-    return [
-      const SizedBox(height: 16),
-      Text('SUBTITLES', style: Theme.of(context).textTheme.labelMedium?.copyWith(color: Pop.muted, letterSpacing: 1.2)),
-      const SizedBox(height: 8),
-      Wrap(spacing: 8, runSpacing: 8, children: [
-        for (final t in info.subtitles)
-          FilterChip(
-            label: Text(t.auto ? '${t.name} · auto' : t.name),
-            selected: s.subLangs.contains(t.lang),
-            onSelected: (_) => c.toggleLang(t.lang),
-          ),
+        if (controller.text.isNotEmpty && !busy)
+          IconButton(tooltip: 'Clear', onPressed: controller.clear, icon: const Icon(Icons.close_rounded, size: 20)),
+        PopButton(label: 'Fetch', onPressed: onFetch, busy: busy, expand: false, height: 48),
       ]),
-      if (s.mode != DownloadMode.subtitlesOnly && s.subLangs.isNotEmpty)
-        SwitchListTile(
-          contentPadding: EdgeInsets.zero,
-          title: const Text('Put subtitles inside the video'),
-          subtitle: const Text('Off: saved next to it as .srt files'),
-          value: s.embedSubs,
-          onChanged: c.setEmbed,
-        ),
-    ];
+    );
   }
 }
 
-class _ErrorBox extends StatelessWidget {
-  const _ErrorBox({required this.message, required this.onRetry});
+class _PlatformChip extends StatelessWidget {
+  const _PlatformChip({required this.label, required this.active});
+
+  final String label;
+  final bool active;
+
+  @override
+  Widget build(BuildContext context) {
+    return AnimatedContainer(
+      duration: Pop.medium,
+      curve: Curves.easeOutBack,
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+      decoration: ShapeDecoration(shape: const StadiumBorder(), color: active ? Pop.ink : Pop.softYellow),
+      child: Text(label,
+          style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: active ? Pop.yellow : Pop.ink)),
+    );
+  }
+}
+
+/// Placeholder while yt-dlp reads the link.
+class _FetchingCard extends StatelessWidget {
+  const _FetchingCard();
+
+  @override
+  Widget build(BuildContext context) {
+    Widget bar(double w, double h) => Container(
+          width: w,
+          height: h,
+          decoration: BoxDecoration(color: Pop.track, borderRadius: BorderRadius.circular(h)),
+        );
+    final card = Container(
+      padding: const EdgeInsets.all(14),
+      decoration: const BoxDecoration(color: Pop.card, borderRadius: Pop.cardRadius),
+      child: Row(children: [
+        Container(width: 72, height: 72, decoration: const BoxDecoration(color: Pop.track, borderRadius: Pop.thumbRadius)),
+        const SizedBox(width: 14),
+        Expanded(
+          child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            bar(double.infinity, 14),
+            const SizedBox(height: 10),
+            bar(120, 12),
+            const SizedBox(height: 10),
+            const Text('Reading the link…', style: TextStyle(color: Pop.muted, fontSize: 13)),
+          ]),
+        ),
+      ]),
+    );
+    if (Pop.reduceMotion(context)) return card;
+    return card.animate(onPlay: (c) => c.repeat()).shimmer(duration: 1200.ms, color: Colors.white);
+  }
+}
+
+/// Shown after a fetch, in case the sheet was closed without downloading.
+class _ReadyCard extends StatelessWidget {
+  const _ReadyCard({required this.info, required this.onOpen});
+
+  final MediaInfo info;
+  final VoidCallback onOpen;
+
+  @override
+  Widget build(BuildContext context) {
+    return InkWell(
+      borderRadius: Pop.cardRadius,
+      onTap: onOpen,
+      child: Container(
+        padding: const EdgeInsets.all(14),
+        decoration: const BoxDecoration(color: Pop.softYellow, borderRadius: Pop.cardRadius),
+        child: Row(children: [
+          PopThumb(seed: info.url, url: info.thumbnail, size: 72),
+          const SizedBox(width: 14),
+          Expanded(
+            child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              Text(info.title, maxLines: 2, overflow: TextOverflow.ellipsis, style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 15)),
+              const SizedBox(height: 4),
+              const Text('Choose format', style: TextStyle(fontWeight: FontWeight.w600)),
+            ]),
+          ),
+          const Icon(Icons.chevron_right_rounded),
+        ]),
+      ),
+    );
+  }
+}
+
+class _ErrorCard extends StatelessWidget {
+  const _ErrorCard({required this.message, required this.onRetry});
 
   final String message;
   final VoidCallback onRetry;
 
   @override
   Widget build(BuildContext context) {
-    return Card(
-      color: const Color(0xFFFFE4E4),
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          const Text("Couldn't read that link", style: TextStyle(fontWeight: FontWeight.w700)),
-          const SizedBox(height: 4),
-          SelectableText(message),
-          Row(children: [
-            TextButton(onPressed: onRetry, child: const Text('Try again')),
-            TextButton(
-              onPressed: () => Clipboard.setData(ClipboardData(text: message)),
-              child: const Text('Copy error'),
-            ),
-          ]),
+    return Container(
+      padding: const EdgeInsets.fromLTRB(18, 16, 10, 8),
+      decoration: const BoxDecoration(color: Color(0xFFFFE1E1), borderRadius: Pop.cardRadius),
+      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        const Text("Couldn't read that link", style: TextStyle(fontWeight: FontWeight.w800, fontSize: 16)),
+        const SizedBox(height: 4),
+        Text(message, maxLines: 4, overflow: TextOverflow.ellipsis),
+        Row(children: [
+          TextButton(onPressed: onRetry, child: const Text('Try again', style: TextStyle(fontWeight: FontWeight.w700))),
+          TextButton(
+            onPressed: () => Clipboard.setData(ClipboardData(text: message)),
+            child: const Text('Copy error'),
+          ),
         ]),
-      ),
+      ]),
+    ).animate(target: Pop.reduceMotion(context) ? null : 1).shakeX(hz: 4, amount: 4, duration: 350.ms);
+  }
+}
+
+class _RecentRow extends StatelessWidget {
+  const _RecentRow({required this.job});
+
+  final DownloadJob job;
+
+  @override
+  Widget build(BuildContext context) {
+    final mode = DownloadMode.values.byName(job.mode);
+    final audio = mode == DownloadMode.audioOnly;
+    final what = switch (mode) {
+      DownloadMode.audioOnly => job.audioFormat.toUpperCase(),
+      DownloadMode.subtitlesOnly => 'Subtitles',
+      _ => [job.container.toUpperCase(), if (job.maxHeight != null) '${job.maxHeight}p'].join(' · '),
+    };
+    return Container(
+      margin: const EdgeInsets.only(bottom: 10),
+      padding: const EdgeInsets.all(10),
+      decoration: const BoxDecoration(color: Pop.card, borderRadius: Pop.cardRadius),
+      child: Row(children: [
+        PopThumb(seed: job.id, url: job.thumbnail, audio: audio, size: 52),
+        const SizedBox(width: 14),
+        Expanded(
+          child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            Text(job.title, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 15)),
+            const SizedBox(height: 2),
+            Text([job.site, what].whereType<String>().join(' · '), style: const TextStyle(color: Pop.muted, fontSize: 13)),
+          ]),
+        ),
+        const Padding(padding: EdgeInsets.only(right: 6), child: Icon(Icons.check_circle_rounded, semanticLabel: 'Done')),
+      ]),
     );
   }
 }

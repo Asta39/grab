@@ -6,7 +6,7 @@ plugins {
 
 android {
     namespace = "app.grab.grab"
-    compileSdk = flutter.compileSdkVersion
+    compileSdk = 37
     ndkVersion = flutter.ndkVersion
 
     compileOptions {
