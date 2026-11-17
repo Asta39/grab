@@ -16,6 +16,7 @@ import '../../data/settings/app_settings.dart';
 import '../library/library_items.dart';
 import '../library/player_screen.dart';
 import 'extraction_controller.dart';
+import '../../core/utils/haptics.dart';
 
 void openDownload(BuildContext context, String jobId) {
   Navigator.of(
@@ -273,7 +274,7 @@ class _PreviewState extends State<_Preview> {
               child: InkWell(
                 onTap: ready
                     ? () {
-                        HapticFeedback.selectionClick();
+                        Haptics.selection();
                         v.isPlaying ? _c.pause() : _c.play();
                       }
                     : null,

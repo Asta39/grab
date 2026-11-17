@@ -9,6 +9,7 @@ import 'package:toastification/toastification.dart';
 
 import '../core/theme/pop_theme.dart';
 import '../core/utils/links.dart';
+import '../core/widgets/app_scale.dart';
 import '../core/widgets/pop_widgets.dart';
 import '../core/widgets/toasts.dart';
 import '../data/db/app_database.dart';
@@ -17,6 +18,7 @@ import '../features/home/home_screen.dart';
 import '../features/library/library_screen.dart';
 import '../features/settings/settings_screen.dart';
 import 'providers.dart';
+import '../core/utils/haptics.dart';
 
 class GrabApp extends ConsumerWidget {
   const GrabApp({super.key});
@@ -24,14 +26,20 @@ class GrabApp extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final themeMode = ref.watch(settingsProvider.select((s) => s.themeMode));
-    return ToastificationWrapper(
-      child: MaterialApp(
-        title: 'Grab',
-        debugShowCheckedModeBanner: false,
-        theme: popTheme(),
-        darkTheme: popTheme(brightness: Brightness.dark),
-        themeMode: themeMode,
-        home: const _Shell(),
+    // AppScale sits above everything (toasts included) so the whole app scales together.
+    return MediaQuery.fromView(
+      view: View.of(context),
+      child: AppScale(
+        child: ToastificationWrapper(
+          child: MaterialApp(
+            title: 'Grab',
+            debugShowCheckedModeBanner: false,
+            theme: popTheme(),
+            darkTheme: popTheme(brightness: Brightness.dark),
+            themeMode: themeMode,
+            home: const _Shell(),
+          ),
+        ),
       ),
     );
   }
@@ -148,11 +156,11 @@ class _ShellState extends ConsumerState<_Shell> with WidgetsBindingObserver {
       final prev = was[j.id];
       if (prev == null || prev == j.status) continue;
       if (j.status == JobStatus.done) {
-        HapticFeedback.heavyImpact();
+        Haptics.success();
         if (!Pop.reduceMotion(context)) _confetti.play();
         popToast('Saved', icon: Icons.check_circle_rounded, detail: j.title);
       } else if (j.status == JobStatus.failed) {
-        HapticFeedback.vibrate();
+        Haptics.error();
         popToast(
           'Download failed',
           icon: Icons.error_rounded,

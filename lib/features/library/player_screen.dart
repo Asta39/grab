@@ -2,12 +2,12 @@ import 'dart:async';
 import 'dart:io';
 
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:video_player/video_player.dart';
 
 import '../../core/theme/pop_theme.dart';
 import '../../core/widgets/pop_widgets.dart';
 import 'library_items.dart';
+import '../../core/utils/haptics.dart';
 
 void openPlayer(BuildContext context, LibraryItem item) {
   Navigator.of(
@@ -63,7 +63,7 @@ class _PlayerScreenState extends State<PlayerScreen> {
   }
 
   void _toggle() {
-    HapticFeedback.selectionClick();
+    Haptics.selection();
     _c.value.isPlaying ? _c.pause() : _c.play();
     setState(() => _controlsVisible = true);
     _scheduleHide();

@@ -6,12 +6,14 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../app/providers.dart';
 import '../../core/theme/pop_theme.dart';
 import '../../core/utils/links.dart';
+import '../../core/widgets/gooey.dart';
 import '../../core/widgets/pop_widgets.dart';
 import '../../data/db/app_database.dart';
 import '../../data/engine/media_info.dart';
 import '../detail/download_detail_screen.dart';
 import 'fetch_controller.dart';
 import 'format_sheet.dart';
+import '../../core/utils/haptics.dart';
 
 /// Home: paste or share a link, fetch it, then choose a format in the sheet.
 class HomeScreen extends ConsumerStatefulWidget {
@@ -68,7 +70,7 @@ class HomeScreenState extends ConsumerState<HomeScreen> {
       next,
     ) async {
       if (prev is AsyncLoading && next is AsyncData && next.value != null) {
-        HapticFeedback.lightImpact();
+        Haptics.light();
         if (await showFormatSheet(context)) widget.onQueued?.call();
       }
     });
@@ -107,18 +109,39 @@ class HomeScreenState extends ConsumerState<HomeScreen> {
               ],
             ),
             const SizedBox(height: 28),
-            const Text(
-                  'Paste a link.\nGet the file.',
-                  style: TextStyle(
-                    fontSize: 46,
-                    fontWeight: FontWeight.w800,
-                    height: 1.02,
-                    letterSpacing: -0.6,
+            SizedBox(
+              height: 112,
+              child: Stack(
+                clipBehavior: Clip.none,
+                children: [
+                  // Quiet yellow metaballs drifting behind the headline.
+                  Positioned(
+                    right: -48,
+                    top: -36,
+                    width: 210,
+                    height: 190,
+                    child: MetaballsBackground(
+                      count: 4,
+                      color: Theme.of(context).brightness == Brightness.dark
+                          ? const Color(0xFF6B5A16)
+                          : context.pop.soft,
+                    ),
                   ),
-                )
-                .animate(target: still ? null : 1)
-                .fadeIn(duration: 400.ms)
-                .slideY(begin: 0.2, end: 0, curve: Curves.easeOutCubic),
+                  const Text(
+                        'Paste a link.\nGet the file.',
+                        style: TextStyle(
+                          fontSize: 46,
+                          fontWeight: FontWeight.w800,
+                          height: 1.02,
+                          letterSpacing: -0.6,
+                        ),
+                      )
+                      .animate(target: still ? null : 1)
+                      .fadeIn(duration: 400.ms)
+                      .slideY(begin: 0.2, end: 0, curve: Curves.easeOutCubic),
+                ],
+              ),
+            ),
             const SizedBox(height: 24),
             _LinkField(
               controller: _url,
