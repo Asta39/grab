@@ -1,0 +1,8 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Security vulnerability
+    url: https://github.com/Asta39/grab/security/advisories/new
+    about: Report security problems privately, not as a public issue.
+  - name: A site stopped working
+    url: https://github.com/yt-dlp/yt-dlp/issues
+    about: If yt-dlp itself fails on the link (even after updating), the fix belongs there.

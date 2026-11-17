@@ -1,0 +1,47 @@
+name: Bug report
+description: Something isn't working, or a link won't download.
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for reporting! First, please update the engine in **Settings → Check for engine update** and try again; that fixes most broken links.
+  - type: input
+    id: link
+    attributes:
+      label: Link
+      description: The link that failed (public links only).
+      placeholder: https://www.youtube.com/watch?v=...
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened?
+      description: What you did, what you expected, and what happened instead.
+    validations:
+      required: true
+  - type: textarea
+    id: error
+    attributes:
+      label: Error message
+      description: Paste the error Grab showed. The **Copy error** button copies it for you.
+      render: text
+  - type: dropdown
+    id: platform
+    attributes:
+      label: Platform
+      options: [Android, macOS, Windows]
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: Grab and yt-dlp versions
+      description: Both are in Settings → About and Engine.
+      placeholder: Grab 1.0.0, yt-dlp 2026.10.26
+    validations:
+      required: true
+  - type: input
+    id: device
+    attributes:
+      label: Device and OS version
+      placeholder: Pixel 9, Android 16

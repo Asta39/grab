@@ -9,7 +9,7 @@
 A free, open-source Android app for saving video, audio and subtitles from TikTok, YouTube, Instagram, Pinterest, X, Facebook and [1,800+ other sites](https://github.com/yt-dlp/yt-dlp/blob/master/supportedsites.md).
 
 [![License: GPL-3.0](https://img.shields.io/badge/license-GPL--3.0-141414?style=flat-square)](LICENSE)
-[![Platform: Android 7.0+](https://img.shields.io/badge/platform-Android%207.0%2B-FFD84D?style=flat-square&labelColor=141414)](#requirements)
+[![Platforms: Android, macOS, Windows](https://img.shields.io/badge/platforms-Android%20·%20macOS%20·%20Windows-FFD84D?style=flat-square&labelColor=141414)](#install)
 [![Built with Flutter](https://img.shields.io/badge/built%20with-Flutter-02569B?style=flat-square)](https://flutter.dev)
 [![Powered by yt-dlp](https://img.shields.io/badge/powered%20by-yt--dlp-FF0000?style=flat-square)](https://github.com/yt-dlp/yt-dlp)
 
@@ -87,15 +87,32 @@ Grab runs [yt-dlp](https://github.com/yt-dlp/yt-dlp) and [FFmpeg](https://ffmpeg
 
 ## Install
 
-Prebuilt APKs will be published on [Releases](https://github.com/Asta39/grab/releases) and F-Droid. Until then, [build from source](#build-from-source). Most phones need the `arm64-v8a` build.
+Download the latest version from [**Releases**](https://github.com/Asta39/grab/releases/latest) or from the [website](https://asta39.github.io/grab/).
 
-### Requirements
-- Android 7.0 (API 24) or newer
-- Enough free space for the app (~70 MB download) plus its bundled Python and FFmpeg
+| Platform | Download | Needs |
+| --- | --- | --- |
+| **Android** | [`grab-v…-arm64-v8a.apk`](https://github.com/Asta39/grab/releases/latest) (most phones) · `armeabi-v7a` for older 32-bit phones | Android 7.0 or newer |
+| **macOS** | [`grab-macos.dmg`](https://github.com/Asta39/grab/releases/latest/download/grab-macos.dmg) | macOS 12 or newer, Apple silicon or Intel |
+| **Windows** | [`grab-windows-x64.zip`](https://github.com/Asta39/grab/releases/latest/download/grab-windows-x64.zip) | Windows 10 or 11, 64-bit |
+
+### Android
+Open the APK and allow your browser or file manager to install apps when asked. Later updates install from inside Grab (**Settings → Grab → Check now**) and keep your downloads, settings and history.
+
+### macOS
+1. Open `grab-macos.dmg` and drag **Grab** into **Applications**.
+2. The first time, right-click Grab in Applications and choose **Open**. Grab isn't notarised by Apple yet, so macOS asks once.
+3. On first launch Grab fetches yt-dlp, and FFmpeg if you don't already have it. This takes a moment.
+
+### Windows
+1. Unzip `grab-windows-x64.zip` anywhere, for example into `Documents\Grab`.
+2. Run `Grab.exe`. If SmartScreen warns about an unknown publisher, choose **More info → Run anyway**.
+3. On first launch Grab fetches yt-dlp and FFmpeg into its own folder.
+
+Files are saved to `Downloads/Grab` on every platform, or a folder you choose in Settings.
 
 ## Build from source
 
-**Prerequisites:** Flutter 3.44+, Android SDK with platform 37, JDK 17.
+**Prerequisites:** Flutter 3.44+, Android SDK with platform 37, JDK 17. For desktop: Xcode (macOS) or Visual Studio with C++ (Windows).
 
 ```bash
 git clone https://github.com/Asta39/grab.git
@@ -104,6 +121,16 @@ flutter pub get
 dart run build_runner build
 flutter build apk --release --split-per-abi
 ```
+
+Desktop:
+
+```bash
+flutter build macos --release        # on a Mac
+macos/dmg/make_dmg.sh build/macos/Build/Products/Release/Grab.app grab-macos.dmg
+flutter build windows --release      # on Windows
+```
+
+The [Desktop workflow](.github/workflows/desktop.yml) builds both on GitHub and attaches them to each release.
 
 APKs are written to `build/app/outputs/flutter-apk/`.
 
@@ -161,11 +188,7 @@ flutter test
 
 ## Contributing
 
-Issues and pull requests are welcome. Before you open a PR:
-
-1. Run `flutter analyze` and `flutter test`, and make sure both pass.
-2. Keep changes focused, one feature or fix per PR.
-3. For UI changes, include a screenshot or a short screen recording.
+Issues and pull requests are welcome. Please read the [contributing guide](CONTRIBUTING.md) and follow the [code of conduct](CODE_OF_CONDUCT.md). Found a security problem? See the [security policy](SECURITY.md) and report it privately.
 
 ## Acknowledgements
 

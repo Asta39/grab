@@ -4,6 +4,11 @@ name: Desktop
 # GitHub release and the packages are attached to it automatically.
 on:
   workflow_dispatch:
+    inputs:
+      tag:
+        description: "Also attach the builds to this existing release (e.g. v1.0.0)"
+        required: false
+        default: ""
   pull_request:
   release:
     types: [published]
@@ -30,10 +35,10 @@ jobs:
           name: grab-windows
           path: grab-windows-x64.zip
       - name: Attach to release
-        if: github.event_name == 'release'
+        if: github.event_name == 'release' || inputs.tag != ''
         env:
           GH_TOKEN: ${{ github.token }}
-        run: gh release upload "${{ github.event.release.tag_name }}" grab-windows-x64.zip --clobber
+        run: gh release upload "${{ github.event.release.tag_name || inputs.tag }}" grab-windows-x64.zip --clobber
 
   macos:
     runs-on: macos-15
@@ -50,17 +55,14 @@ jobs:
       - run: flutter pub get
       - run: flutter build macos --release
       - name: Package
-        run: |
-          mkdir dmg
-          cp -R build/macos/Build/Products/Release/Grab.app dmg/
-          ln -s /Applications dmg/Applications
-          hdiutil create -volname Grab -srcfolder dmg -ov -format UDZO grab-macos.dmg
+        # Designed install window: Pop background, Grab and Applications side by side.
+        run: macos/dmg/make_dmg.sh build/macos/Build/Products/Release/Grab.app grab-macos.dmg
       - uses: actions/upload-artifact@v4
         with:
           name: grab-macos
           path: grab-macos.dmg
       - name: Attach to release
-        if: github.event_name == 'release'
+        if: github.event_name == 'release' || inputs.tag != ''
         env:
           GH_TOKEN: ${{ github.token }}
-        run: gh release upload "${{ github.event.release.tag_name }}" grab-macos.dmg --clobber
+        run: gh release upload "${{ github.event.release.tag_name || inputs.tag }}" grab-macos.dmg --clobber
