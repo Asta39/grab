@@ -1,0 +1,24 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="660" height="400" viewBox="0 0 660 400">
+  <defs>
+    <style>
+      @font-face { font-family: 'Outfit'; src: url('file:///Users/ianlove/Grab/assets/fonts/Outfit-Variable.ttf'); }
+      .t { font-family: 'Outfit', 'Helvetica Neue', sans-serif; }
+    </style>
+    <linearGradient id="bg" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#FFFFFF"/>
+      <stop offset="1" stop-color="#FFF6D6"/>
+    </linearGradient>
+    <marker id="head" markerWidth="4" markerHeight="4" refX="2.2" refY="2" orient="auto">
+      <path d="M0,0 L4,2 L0,4 Z" fill="#141414"/>
+    </marker>
+  </defs>
+  <rect width="660" height="400" fill="url(#bg)"/>
+  <text class="t" x="330" y="64" text-anchor="middle" font-size="30" font-weight="800" fill="#141414" letter-spacing="-0.6">Install Grab</text>
+  <text class="t" x="330" y="90" text-anchor="middle" font-size="14" font-weight="500" fill="#6E6E73">Drag Grab into Applications.</text>
+  <!-- Yellow pads behind the two icons -->
+  <rect x="98" y="122" width="144" height="144" rx="36" fill="#FFD84D" fill-opacity="0.35"/>
+  <rect x="418" y="122" width="144" height="144" rx="36" fill="#FFD84D" fill-opacity="0.35"/>
+  <!-- Arrow -->
+  <path d="M262,194 C300,174 360,174 392,194" fill="none" stroke="#141414" stroke-width="5" stroke-linecap="round" marker-end="url(#head)"/>
+  <text class="t" x="330" y="352" text-anchor="middle" font-size="12" font-weight="500" fill="#8E8E93">First time? Right-click Grab in Applications and choose Open.</text>
+</svg>

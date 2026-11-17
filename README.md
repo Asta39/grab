@@ -161,11 +161,7 @@ flutter test
 
 ## Contributing
 
-Issues and pull requests are welcome. Before you open a PR:
-
-1. Run `flutter analyze` and `flutter test`, and make sure both pass.
-2. Keep changes focused, one feature or fix per PR.
-3. For UI changes, include a screenshot or a short screen recording.
+Issues and pull requests are welcome. Please read the [contributing guide](CONTRIBUTING.md) and follow the [code of conduct](CODE_OF_CONDUCT.md). Found a security problem? See the [security policy](SECURITY.md) and report it privately.
 
 ## Acknowledgements
 
