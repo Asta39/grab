@@ -6,6 +6,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:share_plus/share_plus.dart';
 
 import '../../app/providers.dart';
+import '../club/game.dart';
 import '../../core/audio/audio_playback.dart';
 import '../../core/theme/pop_theme.dart';
 import '../../core/utils/haptics.dart';
@@ -72,7 +73,7 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen> {
         if (_picked.contains(i.path)) XFile(i.path),
     ];
     if (files.isEmpty) return;
-    await SharePlus.instance.share(ShareParams(files: files));
+    await shareAndCount(ref, ShareParams(files: files));
   }
 
   Future<void> _deleteSelected() async {
@@ -296,22 +297,30 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen> {
                     ),
                     child: Column(
                       children: [
-                        Icon(
+                        Image.asset(
                           all.isEmpty
-                              ? Icons.video_library_rounded
-                              : Icons.search_off_rounded,
-                          size: 44,
-                          color: context.pop.muted,
+                              ? 'assets/buddy/wave.png'
+                              : 'assets/buddy/search.png',
+                          width: 120,
+                          height: 120,
                         ),
                         const SizedBox(height: 10),
                         Text(
                           all.isEmpty
-                              ? 'Your downloads show up here'
-                              : 'Nothing matches',
+                              ? 'Nothing grabbed yet'
+                              : 'Hmm, nothing matches',
                           style: const TextStyle(
                             fontSize: 18,
                             fontWeight: FontWeight.w800,
                           ),
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          all.isEmpty
+                              ? 'Your first one\'s waiting. Everything you save lands here.'
+                              : 'Try other words, or tap the buddy and describe it.',
+                          textAlign: TextAlign.center,
+                          style: TextStyle(color: context.pop.muted),
                         ),
                       ],
                     ),
@@ -548,7 +557,8 @@ class _Tile extends ConsumerWidget {
       case 'play':
         openPlayer(context, item);
       case 'share':
-        await SharePlus.instance.share(
+        await shareAndCount(
+          ref,
           ShareParams(files: [XFile(item.path)], subject: item.title),
         );
       case 'delete':

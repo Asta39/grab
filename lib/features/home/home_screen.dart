@@ -11,6 +11,10 @@ import '../../core/widgets/dock_inset.dart';
 import '../../core/widgets/pop_widgets.dart';
 import '../../data/db/app_database.dart';
 import '../../data/engine/media_info.dart';
+import '../club/club_widgets.dart';
+import '../club/game.dart';
+import '../club/weekly.dart';
+import '../club/wrapped.dart';
 import '../detail/download_detail_screen.dart';
 import 'fetch_controller.dart';
 import 'format_sheet.dart';
@@ -120,6 +124,8 @@ class HomeScreenState extends ConsumerState<HomeScreen> {
                   ),
                 ),
                 const Spacer(),
+                const StreakChip(),
+                const SizedBox(width: 8),
                 PopIconButton(
                   icon: Icons.content_paste_rounded,
                   tooltip: 'Paste link and fetch',
@@ -127,6 +133,39 @@ class HomeScreenState extends ConsumerState<HomeScreen> {
                 ),
               ],
             ),
+            if (isRecapDay() && ref.watch(gameProvider).enabled) ...[
+              const SizedBox(height: 16),
+              const WeeklyRecapCard(),
+            ],
+            if (isWrappedSeason() && ref.watch(gameProvider).enabled) ...[
+              const SizedBox(height: 16),
+              Material(
+                color: Pop.ink,
+                borderRadius: Pop.cardRadius,
+                child: InkWell(
+                  borderRadius: Pop.cardRadius,
+                  onTap: () => openWrapped(context),
+                  child: Padding(
+                    padding: const EdgeInsets.fromLTRB(20, 12, 12, 12),
+                    child: Row(
+                      children: [
+                        const Expanded(
+                          child: Text(
+                            'Your Grab Wrapped is ready ✨',
+                            style: TextStyle(
+                              color: Pop.yellow,
+                              fontSize: 17,
+                              fontWeight: FontWeight.w800,
+                            ),
+                          ),
+                        ),
+                        Image.asset('assets/buddy/cheer.png', width: 56),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            ],
             const SizedBox(height: 28),
             SizedBox(
               height: 112,

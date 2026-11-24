@@ -3,8 +3,10 @@ import 'dart:ui' show ImageFilter;
 
 import 'package:flutter/material.dart';
 
+import '../theme/cosmetics.dart';
 import '../theme/pop_theme.dart';
 import '../utils/audio_art.dart';
+import 'dock_fill.dart';
 import 'gooey.dart';
 import '../../core/utils/haptics.dart';
 
@@ -341,19 +343,22 @@ class PopThumb extends StatelessWidget {
   Widget _art(BuildContext context) {
     final dark = Theme.of(context).brightness == Brightness.dark;
     final i = AudioArt.instance!.indexFor(seed);
-    return ClipRRect(
-      borderRadius: radius,
-      child: Container(
-        width: size,
-        height: size,
-        color: dark ? const Color(0xFF2B2612) : const Color(0xFFFFF3C4),
-        padding: const EdgeInsets.all(6),
-        child: Image.asset(
-          AudioArt.assetFor(i),
-          fit: BoxFit.contain,
-          color: dark ? Pop.yellow : Pop.ink,
-          filterQuality: FilterQuality.medium,
-          semanticLabel: 'Audio',
+    return ValueListenableBuilder(
+      valueListenable: Cosmetics.cover,
+      builder: (context, c, _) => ClipRRect(
+        borderRadius: radius,
+        child: Container(
+          width: size,
+          height: size,
+          color: dark ? c.bgDark : c.bg,
+          padding: const EdgeInsets.all(6),
+          child: Image.asset(
+            AudioArt.assetFor(i),
+            fit: BoxFit.contain,
+            color: dark ? c.inkDark : c.ink,
+            filterQuality: FilterQuality.medium,
+            semanticLabel: 'Audio',
+          ),
         ),
       ),
     );
@@ -490,52 +495,71 @@ class _PopTabBarState extends State<PopTabBar> {
                   final unit = (box.maxWidth - pad * 2) / (10 * (n - 1) + 16);
                   final w = unit * 16;
                   double left(int i) => pad + unit * 10 * i;
+                  // The active bubble, sliding to the selected tab.
+                  Widget blob(Widget Function(DockColor) fill) =>
+                      TweenAnimationBuilder<double>(
+                        tween: Tween(end: left(widget.index)),
+                        duration: still
+                            ? Duration.zero
+                            : (movingRight ? slow : fast),
+                        curve: Curves.easeOutCubic,
+                        builder: (_, l, _) => TweenAnimationBuilder<double>(
+                          tween: Tween(end: left(widget.index) + w),
+                          duration: still
+                              ? Duration.zero
+                              : (movingRight ? fast : slow),
+                          curve: Curves.easeOutBack,
+                          builder: (_, r, _) => Positioned(
+                            left: math.min(l, r - 40),
+                            width: math.max(r - l, 40),
+                            top: pad,
+                            bottom: pad,
+                            child: ValueListenableBuilder(
+                              valueListenable: Cosmetics.dock,
+                              builder: (_, d, _) => fill(d),
+                            ),
+                          ),
+                        ),
+                      );
                   return Stack(
                     children: [
-                      // Gooey active blob.
+                      // Gooey active blob: the blur gives it the stretchy
+                      // shape, so only a flat colour goes through it.
                       Positioned.fill(
                         child: Gooey(
                           blur: 7,
                           child: Stack(
                             children: [
-                              TweenAnimationBuilder<double>(
-                                tween: Tween(end: left(widget.index)),
-                                duration: still
-                                    ? Duration.zero
-                                    : (movingRight ? slow : fast),
-                                curve: Curves.easeOutCubic,
-                                builder: (_, l, _) =>
-                                    TweenAnimationBuilder<double>(
-                                      tween: Tween(end: left(widget.index) + w),
-                                      duration: still
-                                          ? Duration.zero
-                                          : (movingRight ? fast : slow),
-                                      curve: Curves.easeOutBack,
-                                      builder: (_, r, _) => Positioned(
-                                        left: math.min(l, r - 40),
-                                        width: math.max(r - l, 40),
-                                        top: pad,
-                                        bottom: pad,
-                                        child: const DecoratedBox(
-                                          decoration: ShapeDecoration(
-                                            shape: StadiumBorder(),
-                                            color: Pop.yellow,
-                                          ),
-                                        ),
-                                      ),
-                                    ),
+                              blob(
+                                (d) => d.style == DockStyle.solid
+                                    ? DockFill(d)
+                                    : ColoredBox(color: d.color),
                               ),
                             ],
                           ),
                         ),
                       ),
+                      // Patterned docks are drawn crisp on top, outside the blur.
+                      ValueListenableBuilder(
+                        valueListenable: Cosmetics.dock,
+                        builder: (_, d, _) => d.style == DockStyle.solid
+                            ? const SizedBox.shrink()
+                            : Positioned.fill(
+                                child: Stack(children: [blob(DockFill.new)]),
+                              ),
+                      ),
                       Padding(
                         padding: const EdgeInsets.all(pad),
-                        child: Row(
-                          crossAxisAlignment: CrossAxisAlignment.stretch,
-                          children: [
-                            for (var i = 0; i < n; i++) _tab(context, i, dark),
-                          ],
+                        child: ValueListenableBuilder(
+                          // Icons follow the dock's colour (light on dark docks).
+                          valueListenable: Cosmetics.dock,
+                          builder: (context, _, _) => Row(
+                            crossAxisAlignment: CrossAxisAlignment.stretch,
+                            children: [
+                              for (var i = 0; i < n; i++)
+                                _tab(context, i, dark),
+                            ],
+                          ),
                         ),
                       ),
                     ],
@@ -578,7 +602,10 @@ class _PopTabBarState extends State<PopTabBar> {
                   scale: on ? 1.08 : 1,
                   duration: Pop.medium,
                   curve: Curves.easeOutBack,
-                  child: Icon(tab.icon, color: on ? Pop.ink : idle),
+                  child: Icon(
+                    tab.icon,
+                    color: on ? Cosmetics.dock.value.onColor : idle,
+                  ),
                 ),
               ),
               AnimatedSize(
@@ -592,9 +619,9 @@ class _PopTabBarState extends State<PopTabBar> {
                           maxLines: 1,
                           overflow: TextOverflow.fade,
                           softWrap: false,
-                          style: const TextStyle(
+                          style: TextStyle(
                             fontWeight: FontWeight.w700,
-                            color: Pop.ink,
+                            color: Cosmetics.dock.value.onColor,
                           ),
                         ),
                       )

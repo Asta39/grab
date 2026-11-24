@@ -9,6 +9,7 @@ import '../../core/widgets/pop_widgets.dart';
 import '../../core/widgets/toasts.dart';
 import '../../data/engine/media_info.dart';
 import '../../data/repositories/download_repository.dart';
+import '../club/game.dart';
 
 /// Opens the picker for a playlist or profile. Returns true when downloads were queued.
 Future<bool> showPlaylistSheet(BuildContext context, MediaInfo info) async {
@@ -96,6 +97,7 @@ class _PlaylistSheetState extends ConsumerState<PlaylistSheet> {
       );
     }
     if (!mounted) return;
+    ref.read(gameProvider.notifier).playlist();
     Haptics.medium();
     popToast(
       picked.length == 1

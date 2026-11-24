@@ -47,6 +47,17 @@
                 <category android:name="android.intent.category.LAUNCHER"/>
             </intent-filter>
         </activity>
+        <!-- Home screen widget: streak, buddy, and a grab button -->
+        <receiver
+            android:name=".GrabWidget"
+            android:exported="false">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE"/>
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/grab_widget_info"/>
+        </receiver>
         <!-- Background audio with lock-screen and notification controls (audio_service) -->
         <service
             android:name="com.ryanheise.audioservice.AudioService"

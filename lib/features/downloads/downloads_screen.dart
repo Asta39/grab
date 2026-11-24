@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:path/path.dart' as p;
 
 import '../../app/providers.dart';
+import '../club/game.dart';
 import '../../core/theme/pop_theme.dart';
 import '../../core/widgets/morph.dart';
 import '../../core/widgets/dock_inset.dart';
@@ -107,15 +108,15 @@ class _Empty extends StatelessWidget {
       ),
       child: Column(
         children: [
-          Icon(Icons.download_rounded, size: 40),
+          Image.asset('assets/buddy/sleep.png', width: 110, height: 110),
           SizedBox(height: 10),
           Text(
-            'Nothing here yet',
+            'Quiet in here… zzz',
             style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800),
           ),
           SizedBox(height: 4),
           Text(
-            'Paste a link on Home, or share one to Grab from TikTok, YouTube or Pinterest.',
+            'Wake me up with a link: paste one on Home, shake your phone, or share one to Grab from TikTok, YouTube or Pinterest.',
             textAlign: TextAlign.center,
             style: TextStyle(color: context.pop.muted),
           ),
@@ -159,14 +160,19 @@ class _JobCard extends ConsumerWidget {
     final pct = job.progress.toStringAsFixed(0);
     final still = Pop.reduceMotion(context);
 
+    final playful = ref.watch(gameProvider.select((g) => g.enabled));
     final status = switch (job.status) {
-      JobStatus.queued => 'Waiting',
-      JobStatus.running when job.progress >= 100 => 'Finishing…',
+      JobStatus.queued => playful ? 'In line, stretching…' : 'Waiting',
+      JobStatus.running when job.progress >= 100 =>
+        playful ? 'Tying the bow… 🎁' : 'Finishing…',
       JobStatus.running => [
-        job.progress <= 0 ? 'Starting…' : '${job.progress.toStringAsFixed(0)}%',
+        if (playful) cheerFor(job.progress),
+        job.progress <= 0
+            ? (playful ? '' : 'Starting…')
+            : '${job.progress.toStringAsFixed(0)}%',
         ?ref.watch(speedsProvider).value?[job.id],
         if (job.eta != null && job.eta! > 0) '${_eta(job.eta!)} left',
-      ].join(' · '),
+      ].where((x) => x.isNotEmpty).join(' · '),
       JobStatus.done =>
         files.isEmpty ? 'Saved' : files.map(p.basename).join('\n'),
       JobStatus.failed => job.error ?? 'Failed',
