@@ -9,6 +9,7 @@ import 'package:video_player/video_player.dart';
 import '../../core/utils/platform.dart';
 
 import '../../app/providers.dart';
+import '../club/game.dart';
 import '../../core/audio/audio_playback.dart';
 import '../../core/theme/pop_theme.dart';
 import '../../core/widgets/pop_widgets.dart';
@@ -19,6 +20,7 @@ import '../../data/settings/app_settings.dart';
 import '../library/library_items.dart';
 import '../library/player_screen.dart';
 import 'extraction_controller.dart';
+import 'clip_sheet.dart';
 import 'ringtone_sheet.dart';
 import '../../core/utils/haptics.dart';
 
@@ -137,7 +139,8 @@ class DownloadDetailScreen extends ConsumerWidget {
                 tooltip: 'Share all files',
                 onPressed: onPhone.isEmpty
                     ? null
-                    : () => SharePlus.instance.share(
+                    : () => shareAndCount(
+                        ref,
                         ShareParams(
                           files: [for (final f in onPhone) XFile(f)],
                           subject: job.title,
@@ -532,10 +535,17 @@ class _FileRow extends ConsumerWidget {
               onPressed: () => showRingtoneSheet(context, item),
               icon: const Icon(Icons.ring_volume_rounded),
             ),
+          if (exists && kind == LibraryKind.video && isPhone)
+            IconButton(
+              tooltip: 'Make GIF or sticker',
+              onPressed: () => showClipSheet(context, item),
+              icon: const Icon(Icons.gif_box_rounded),
+            ),
           if (exists)
             IconButton(
               tooltip: 'Share',
-              onPressed: () => SharePlus.instance.share(
+              onPressed: () => shareAndCount(
+                ref,
                 ShareParams(files: [XFile(path)], subject: job.title),
               ),
               icon: const Icon(Icons.share_rounded),

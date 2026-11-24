@@ -7,7 +7,14 @@ import 'package:package_info_plus/package_info_plus.dart';
 import 'package:permission_handler/permission_handler.dart';
 
 import '../../app/providers.dart';
+import '../club/club_widgets.dart';
+import '../club/customize.dart';
+import '../club/fun.dart';
+import '../club/game.dart';
+import '../club/pal.dart';
+import '../club/wrapped.dart';
 import '../../core/theme/pop_theme.dart';
+import '../../core/utils/haptics.dart';
 import '../../core/utils/permissions.dart';
 import '../../core/utils/platform.dart';
 import '../../core/widgets/dock_inset.dart';
@@ -237,6 +244,46 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
               labels: const ['System', 'Light', 'Dark'],
               selected: s.themeMode,
               onChanged: (m) => set((x) => x.copyWith(themeMode: m)),
+            ),
+            const SizedBox(height: 16),
+            const PopSection('Grab Club'),
+            _Group(
+              children: [
+                SwitchListTile(
+                  title: const Text(
+                    'Playful mode',
+                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+                  ),
+                  subtitle: const Text('Streaks, levels and badges'),
+                  value: ref.watch(gameProvider).enabled,
+                  activeTrackColor: Pop.yellow,
+                  activeThumbColor: Pop.ink,
+                  onChanged: (on) {
+                    Haptics.selection();
+                    ref.read(gameProvider.notifier).setEnabled(on);
+                  },
+                ),
+                if (ref.watch(gameProvider).enabled) ...[
+                  _Row(label: 'Trophies', onTap: () => openTrophies(context)),
+                  _Row(
+                    label: 'Make it yours',
+                    value: 'Colours, sounds, buddy',
+                    onTap: () => openCustomize(context),
+                  ),
+                  _Row(
+                    label: 'Grab Wrapped',
+                    value: 'Your year',
+                    onTap: () => openWrapped(context),
+                  ),
+                ],
+                _Row(
+                  label: 'Grab Pal key',
+                  value: ref.watch(funProvider).groqKey.isEmpty
+                      ? 'Add Groq key'
+                      : 'Groq · on',
+                  onTap: () => editGroqKey(context, ref),
+                ),
+              ],
             ),
             const SizedBox(height: 16),
             const PopSection('About'),

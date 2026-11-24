@@ -7,6 +7,7 @@ import 'package:video_player/video_player.dart';
 bool get isPhone => Platform.isAndroid || Platform.isIOS;
 bool get isDesktop => !isPhone;
 
-/// Android shows video best in a real Android view; desktops use textures.
-VideoViewType get videoViewType =>
-    Platform.isAndroid ? VideoViewType.platformView : VideoViewType.textureView;
+/// Video is drawn into a texture everywhere. On Android the "platform view"
+/// mode crashed the whole app (a null video format in video_player) when a
+/// file's video track couldn't be decoded or the file had no picture.
+VideoViewType get videoViewType => VideoViewType.textureView;

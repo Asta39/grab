@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+
+import '../club/game.dart';
 
 import '../../core/theme/pop_theme.dart';
 import '../../core/utils/haptics.dart';
@@ -22,16 +25,16 @@ Future<void> showRingtoneSheet(BuildContext context, LibraryItem item) =>
       builder: (_) => _RingtoneSheet(item: item),
     );
 
-class _RingtoneSheet extends StatefulWidget {
+class _RingtoneSheet extends ConsumerStatefulWidget {
   const _RingtoneSheet({required this.item});
 
   final LibraryItem item;
 
   @override
-  State<_RingtoneSheet> createState() => _RingtoneSheetState();
+  ConsumerState<_RingtoneSheet> createState() => _RingtoneSheetState();
 }
 
-class _RingtoneSheetState extends State<_RingtoneSheet> {
+class _RingtoneSheetState extends ConsumerState<_RingtoneSheet> {
   double? _duration;
   RangeValues _range = const RangeValues(0, 30);
   var _busy = false;
@@ -67,6 +70,7 @@ class _RingtoneSheetState extends State<_RingtoneSheet> {
         'title': widget.item.title,
       });
       Haptics.success();
+      ref.read(gameProvider.notifier).ringtone();
       setState(() => _saved = uri);
     } on PlatformException catch (e) {
       Haptics.error();

@@ -6,10 +6,13 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:receive_sharing_intent/receive_sharing_intent.dart';
+import 'package:sensors_plus/sensors_plus.dart';
 import 'package:toastification/toastification.dart';
 
 import '../core/theme/pop_theme.dart';
+import '../core/utils/haptics.dart';
 import '../core/utils/links.dart';
+import '../core/utils/sfx.dart';
 import '../core/audio/audio_playback.dart';
 import '../core/widgets/app_scale.dart';
 import '../core/widgets/dock_inset.dart';
@@ -18,13 +21,20 @@ import '../features/library/audio_player_screen.dart';
 import '../core/widgets/pop_widgets.dart';
 import '../core/widgets/toasts.dart';
 import '../data/db/app_database.dart';
+import '../features/club/buddy.dart';
+import '../features/club/buddy_moments.dart';
+import '../features/club/celebration.dart';
+import '../features/club/club_widgets.dart';
+import '../features/club/fun.dart';
+import '../features/club/game.dart';
+import '../features/club/pal.dart';
+import '../features/club/rewards.dart';
 import '../features/downloads/downloads_screen.dart';
 import '../features/home/home_screen.dart';
 import '../features/library/library_screen.dart';
 import '../features/settings/settings_screen.dart';
 import '../features/welcome/welcome_screen.dart';
 import 'providers.dart';
-import '../core/utils/haptics.dart';
 
 class GrabApp extends ConsumerWidget {
   const GrabApp({super.key});
@@ -105,7 +115,13 @@ class _ShellState extends ConsumerState<_Shell> with WidgetsBindingObserver {
   final _confetti = ConfettiController(
     duration: const Duration(milliseconds: 700),
   );
+  final _bigConfetti = ConfettiController(
+    duration: const Duration(milliseconds: 900),
+  );
   StreamSubscription<List<SharedMediaFile>>? _shares;
+  StreamSubscription<UserAccelerometerEvent>? _shake;
+  DateTime _lastJolt = DateTime(0);
+  DateTime _lastShake = DateTime(0);
   var _tab = 0;
   String? _lastOffered;
   ({String link, String platform})? _offer;
@@ -122,7 +138,11 @@ class _ShellState extends ConsumerState<_Shell> with WidgetsBindingObserver {
         _onShared,
       );
     }
-    WidgetsBinding.instance.addPostFrameCallback((_) => _offerClipboard());
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _offerClipboard();
+      _updateWidget();
+    });
+    Buddy.mood(BuddyMood.wave);
     // Quick Settings tile: open Grab and fetch whatever link is copied.
     _launch.setMethodCallHandler((call) async {
       if (call.method == 'action') _onLaunchAction(call.arguments as String?);
@@ -166,6 +186,8 @@ class _ShellState extends ConsumerState<_Shell> with WidgetsBindingObserver {
     _shares?.cancel();
     _offerTimer?.cancel();
     _confetti.dispose();
+    _bigConfetti.dispose();
+    _shake?.cancel();
     super.dispose();
   }
 
@@ -175,6 +197,8 @@ class _ShellState extends ConsumerState<_Shell> with WidgetsBindingObserver {
     if (state == AppLifecycleState.resumed) {
       Future.delayed(const Duration(milliseconds: 400), _offerClipboard);
     }
+    // The streak can lapse overnight; keep the home screen widget honest.
+    if (state == AppLifecycleState.paused) _updateWidget();
   }
 
   void _onShared(List<SharedMediaFile> items) {
@@ -254,6 +278,103 @@ class _ShellState extends ConsumerState<_Shell> with WidgetsBindingObserver {
     _home.currentState?.fetchLink(o.link);
   }
 
+  /// Listens to the accelerometer only while shake to grab is switched on.
+  void _listenForShake(bool on) {
+    if (!Platform.isAndroid || on == (_shake != null)) return;
+    if (on) {
+      _shake = userAccelerometerEventStream().listen(
+        _onMotion,
+        onError: (_) {},
+      );
+    } else {
+      _shake?.cancel();
+      _shake = null;
+    }
+  }
+
+  /// Two sharp jolts within 600 ms count as a shake.
+  void _onMotion(UserAccelerometerEvent e) {
+    if (!mounted) return;
+    final g = e.x * e.x + e.y * e.y + e.z * e.z;
+    if (g < 18 * 18) return;
+    final now = DateTime.now();
+    final sinceJolt = now.difference(_lastJolt);
+    _lastJolt = now;
+    if (sinceJolt > const Duration(milliseconds: 600) ||
+        sinceJolt < const Duration(milliseconds: 120)) {
+      return;
+    }
+    if (now.difference(_lastShake) < const Duration(seconds: 3)) return;
+    _lastShake = now;
+    _pasteFromShake();
+  }
+
+  Future<void> _pasteFromShake() async {
+    final data = await Clipboard.getData(Clipboard.kTextPlain);
+    final link = extractLink(data?.text);
+    if (!mounted) return;
+    Haptics.medium();
+    if (link == null) {
+      Buddy.mood(BuddyMood.sad);
+      popToast(
+        'Shake to grab',
+        icon: Icons.vibration_rounded,
+        detail: 'Copy a video link first, then shake.',
+      );
+      return;
+    }
+    Buddy.mood(BuddyMood.cheer);
+    _lastOffered = link;
+    _dismissOffer();
+    setState(() => _tab = 0);
+    WidgetsBinding.instance.addPostFrameCallback(
+      (_) => _home.currentState?.fetchLink(link),
+    );
+  }
+
+  static const _widget = MethodChannel('grab/widget');
+
+  /// Sends the streak, level and buddy hat to the Android home screen widget.
+  void _updateWidget() {
+    if (!Platform.isAndroid || !mounted) return;
+    final g = ref.read(gameProvider);
+    // Read the choice itself: listeners fire before Rewards.hat catches up.
+    final hat = Rewards.hatById(ref.read(funProvider).hat);
+    _widget
+        .invokeMethod('update', {
+          'streak': g.liveStreak(),
+          'level': 'Level ${g.level.n} · ${g.level.name}',
+          'hat': g.enabled && hat.unlock.ok(g) ? hat.id : 'none',
+        })
+        .catchError((_) {});
+  }
+
+  /// The buddy reacts, when playful mode and the buddy are on.
+  void _say(BuddyLine l) {
+    final fun = ref.read(funProvider);
+    if (!fun.buddy || !ref.read(gameProvider).enabled) return;
+    Buddy.say(l.text, hat: l.hat);
+  }
+
+  /// Shows Grab Club moments one after another, after the "Saved" toast.
+  void _celebrate() {
+    final moments = ref.read(gameProvider.notifier).takeMoments();
+    for (final (i, m) in moments.indexed) {
+      Future.delayed(Duration(milliseconds: 1400 + 1800 * i), () {
+        if (!mounted) return;
+        showMoment(context, m);
+        if (m is Milestone && !Pop.reduceMotion(context)) _bigConfetti.play();
+        switch (m) {
+          case Milestone(:final files):
+            _say(lineForMilestone(files));
+          case StreakUp(:final days):
+            _say(lineForStreak(days));
+          default:
+        }
+      });
+    }
+  }
+
   /// Celebrate jobs that just finished; warn about ones that just failed.
   void _onJobsChanged(List<DownloadJob>? before, List<DownloadJob> after) {
     if (before == null) return;
@@ -263,10 +384,15 @@ class _ShellState extends ConsumerState<_Shell> with WidgetsBindingObserver {
       if (prev == null || prev == j.status) continue;
       if (j.status == JobStatus.done) {
         Haptics.success();
+        Sfx.pop();
+        Buddy.mood(BuddyMood.cheer);
+        _say(lineForGrab(j));
         if (!Pop.reduceMotion(context)) _confetti.play();
         popToast('Saved', icon: Icons.check_circle_rounded, detail: j.title);
       } else if (j.status == JobStatus.failed) {
         Haptics.error();
+        Buddy.mood(BuddyMood.sad);
+        _say(lineForFailure());
         popToast(
           'Download failed',
           icon: Icons.error_rounded,
@@ -290,9 +416,28 @@ class _ShellState extends ConsumerState<_Shell> with WidgetsBindingObserver {
     });
     ref.listen(jobsProvider, (prev, next) {
       final after = next.value;
-      if (after != null) _onJobsChanged(prev?.value, after);
+      if (after == null) return;
+      _onJobsChanged(prev?.value, after);
+      ref.read(gameProvider.notifier).syncJobs(after);
+      _celebrate();
+    });
+    ref.listen(gameProvider, (_, _) => _updateWidget());
+    ref.listen(funProvider, (_, _) => _updateWidget());
+    ref.listen(speedsProvider, (_, next) {
+      if (ref.read(gameProvider).has('speed_demon')) return;
+      final fast = (next.value ?? const {}).values.any(
+        (v) => (parseSpeed(v) ?? 0) >= 10 * 1024 * 1024,
+      );
+      if (fast) {
+        ref.read(gameProvider.notifier).flag('speed_demon');
+        _celebrate();
+      }
     });
     final active = ref.watch(activeCountProvider);
+    final fun = ref.watch(funProvider);
+    final playful = ref.watch(gameProvider.select((g) => g.enabled));
+    final showBuddy = playful && fun.buddy && (_tab == 0 || _tab == 2);
+    _listenForShake(playful && fun.shake);
 
     return Stack(
       children: [
@@ -344,6 +489,14 @@ class _ShellState extends ConsumerState<_Shell> with WidgetsBindingObserver {
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
+              if (showBuddy)
+                Align(
+                  alignment: Alignment.centerRight,
+                  child: Padding(
+                    padding: const EdgeInsets.only(right: 8),
+                    child: DockBuddy(onTap: () => openPal(context)),
+                  ),
+                ),
               AnimatedSwitcher(
                 duration: Pop.medium,
                 switchInCurve: Curves.easeOutBack,
@@ -373,24 +526,10 @@ class _ShellState extends ConsumerState<_Shell> with WidgetsBindingObserver {
             ],
           ),
         ),
-        Align(
-          alignment: Alignment.topCenter,
-          child: ConfettiWidget(
-            confettiController: _confetti,
-            blastDirectionality: BlastDirectionality.explosive,
-            numberOfParticles: 28,
-            maxBlastForce: 28,
-            minBlastForce: 10,
-            gravity: 0.25,
-            emissionFrequency: 0.0,
-            colors: const [
-              Pop.yellow,
-              Pop.ink,
-              Color(0xFF9FD8FF),
-              Color(0xFFFFB2C8),
-            ],
-          ),
+        Positioned.fill(
+          child: CelebrationLayer(controller: _bigConfetti, big: true),
         ),
+        Positioned.fill(child: CelebrationLayer(controller: _confetti)),
       ],
     );
   }

@@ -18,6 +18,8 @@ class MainActivity : AudioServiceActivity() {
         EnginePlugin(applicationContext, messenger)
         HapticsPlugin(applicationContext, messenger)
         RingtonePlugin(applicationContext, messenger) { this }
+        ClipPlugin(applicationContext, messenger)
+        GrabWidget.channel(applicationContext, messenger)
         AppPlugin(applicationContext, messenger) { this }
         pendingAction = actionOf(intent)
         launch = MethodChannel(messenger, "grab/launch").apply {
