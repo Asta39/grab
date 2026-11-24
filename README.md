@@ -12,8 +12,9 @@ A free, open-source Android app for saving video, audio and subtitles from TikTo
 [![Platforms: Android, macOS, Windows](https://img.shields.io/badge/platforms-Android%20·%20macOS%20·%20Windows-FFD84D?style=flat-square&labelColor=141414)](#install)
 [![Built with Flutter](https://img.shields.io/badge/built%20with-Flutter-02569B?style=flat-square)](https://flutter.dev)
 [![Powered by yt-dlp](https://img.shields.io/badge/powered%20by-yt--dlp-FF0000?style=flat-square)](https://github.com/yt-dlp/yt-dlp)
+[![Buy me a soda](https://img.shields.io/badge/buy%20me%20a-soda-FF8A3D?style=flat-square&labelColor=141414)](https://buymesoda.com/TI6ooK66tVZuouHKmIeUnxE4Zey2)
 
-[Features](#features) · [Screenshots](#screenshots) · [Install](#install) · [Build from source](#build-from-source) · [Architecture](#architecture) · [Contributing](#contributing)
+[Features](#features) · [Screenshots](#screenshots) · [Install](#install) · [Build from source](#build-from-source) · [Architecture](#architecture) · [Contributing](#contributing) · [Support](#support-grab)
 
 <br>
 
@@ -193,6 +194,12 @@ Issues and pull requests are welcome. Please read the [contributing guide](CONTR
 ## Acknowledgements
 
 Grab stands on the work of [yt-dlp](https://github.com/yt-dlp/yt-dlp), [FFmpeg](https://ffmpeg.org), [youtubedl-android](https://github.com/yausername/youtubedl-android), and apps such as [Seal](https://github.com/JunkFood02/Seal) that showed what a great Android downloader can be.
+
+## Support Grab
+
+<a href="https://buymesoda.com/TI6ooK66tVZuouHKmIeUnxE4Zey2"><img src="docs/support/banner.jpg" width="600" alt="Buy me a soda"></a>
+
+Grab is free and open source, with no ads and no tracking. If it saves you time, you can [buy me a soda](https://buymesoda.com/TI6ooK66tVZuouHKmIeUnxE4Zey2). It keeps Grab, and my other open-source apps, going.
 
 ## License
 

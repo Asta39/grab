@@ -12,9 +12,7 @@ import '../../data/engine/media_info.dart';
 import '../club/buddy.dart';
 import '../club/game.dart';
 import '../library/library_items.dart';
-
-const _clip = MethodChannel('grab/clip');
-const _ringtone = MethodChannel('grab/ringtone');
+import 'clip_maker.dart';
 
 enum ClipKind { gif, sticker }
 
@@ -53,16 +51,14 @@ class _ClipSheetState extends ConsumerState<_ClipSheet> {
   @override
   void initState() {
     super.initState();
-    _ringtone
-        .invokeMethod<double>('duration', {'input': widget.item.path})
-        .then((d) {
-          if (!mounted) return;
-          final total = d ?? 10;
-          setState(() {
-            _duration = total;
-            _range = RangeValues(0, total.clamp(1, 3).toDouble());
-          });
-        }, onError: (Object e) => setState(() => _error = e));
+    ClipMaker.duration(widget.item.path).then((d) {
+      if (!mounted) return;
+      final total = d ?? 10;
+      setState(() {
+        _duration = total;
+        _range = RangeValues(0, total.clamp(1, 3).toDouble());
+      });
+    }, onError: (Object e) => setState(() => _error = e));
   }
 
   void _setKind(ClipKind k) {
@@ -83,16 +79,16 @@ class _ClipSheetState extends ConsumerState<_ClipSheet> {
     });
     Buddy.mood(BuddyMood.search, hold: const Duration(seconds: 20));
     try {
-      final r = await _clip.invokeMapMethod<String, String>('make', {
-        'input': widget.item.path,
-        'start': _range.start,
-        'end': _range.end,
-        'kind': _kind.name,
-        'title': widget.item.title,
-      });
+      final made = await ClipMaker.make(
+        input: widget.item.path,
+        start: _range.start,
+        end: _range.end,
+        kind: _kind.name,
+        title: widget.item.title,
+      );
       Haptics.success();
       Buddy.mood(BuddyMood.cheer);
-      setState(() => _made = r?['path']);
+      setState(() => _made = made);
     } on PlatformException catch (e) {
       Haptics.error();
       Buddy.mood(BuddyMood.sad);

@@ -512,6 +512,12 @@ class GameController extends Notifier<GameState> {
 
   bool get firstRun => !_prefs.containsKey(_key);
 
+  /// Replaces progress with a restored backup (no celebrations).
+  void restore(GameState s) {
+    state = s;
+    _prefs.setString(_key, jsonEncode(s.toJson()));
+  }
+
   void _commit(GameState next, {bool celebrate = true}) {
     final before = state;
     final (checked, fresh) = GameRules.checkBadges(next);

@@ -1,0 +1,5 @@
+- A What's new tour after updating
+- Report a problem and Suggest a feature, in Settings
+- Back up and restore your Grab Club progress
+- GIFs and stickers on Mac and Windows too
+- Cleaner update notes, and a way to support Grab

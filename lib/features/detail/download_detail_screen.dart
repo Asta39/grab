@@ -535,7 +535,7 @@ class _FileRow extends ConsumerWidget {
               onPressed: () => showRingtoneSheet(context, item),
               icon: const Icon(Icons.ring_volume_rounded),
             ),
-          if (exists && kind == LibraryKind.video && isPhone)
+          if (exists && kind == LibraryKind.video)
             IconButton(
               tooltip: 'Make GIF or sticker',
               onPressed: () => showClipSheet(context, item),

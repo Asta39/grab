@@ -348,6 +348,7 @@ class _WrappedScreenState extends ConsumerState<WrappedScreen>
                     backgroundColor: Pop.yellow,
                     foregroundColor: Pop.ink,
                     textStyle: const TextStyle(
+                      fontFamily: Pop.font,
                       fontWeight: FontWeight.w800,
                       fontSize: 16,
                     ),
