@@ -8,8 +8,8 @@ import '../../core/theme/pop_theme.dart';
 import '../../core/utils/haptics.dart';
 import '../../core/widgets/pop_widgets.dart';
 import '../../core/widgets/toasts.dart';
-import '../../data/engine/media_info.dart';
 import '../library/library_items.dart';
+import 'clip_editor.dart';
 
 const _channel = MethodChannel('grab/ringtone');
 
@@ -100,7 +100,6 @@ class _RingtoneSheetState extends ConsumerState<_RingtoneSheet> {
   @override
   Widget build(BuildContext context) {
     final d = _duration;
-    final len = _range.end - _range.start;
     return SafeArea(
       child: Padding(
         padding: const EdgeInsets.fromLTRB(24, 0, 24, 20),
@@ -125,46 +124,20 @@ class _RingtoneSheetState extends ConsumerState<_RingtoneSheet> {
             if (d == null && _error == null)
               const Center(child: CircularProgressIndicator())
             else if (d != null) ...[
-              Row(
-                children: [
-                  Text(
-                    clockLabel(_range.start),
-                    style: const TextStyle(fontWeight: FontWeight.w700),
-                  ),
-                  const Spacer(),
-                  PopTag('${len.round()} s'),
-                  const Spacer(),
-                  Text(
-                    clockLabel(_range.end),
-                    style: const TextStyle(fontWeight: FontWeight.w700),
-                  ),
-                ],
+              IgnorePointer(
+                ignoring: _saved != null,
+                child: ClipEditor(
+                  path: widget.item.path,
+                  duration: d,
+                  maxLength: maxRingtoneSeconds,
+                  minLength: 1,
+                  initialLength: 30,
+                  lengths: const [10, 20, 30, 40],
+                  look: ClipLook.audio,
+                  onChanged: (s, e) => _range = RangeValues(s, e),
+                ),
               ),
-              RangeSlider(
-                min: 0,
-                max: d,
-                divisions: d.round().clamp(1, 7200),
-                values: _range,
-                onChanged: _saved != null
-                    ? null
-                    : (v) {
-                        // 1 to 40 seconds; moving one handle past the limit drags the other.
-                        var s = v.start, e = v.end;
-                        if (e - s > maxRingtoneSeconds) {
-                          if (s != _range.start) {
-                            e = s + maxRingtoneSeconds;
-                          } else {
-                            s = e - maxRingtoneSeconds;
-                          }
-                        }
-                        if (e - s < 1) return;
-                        if (s.round() != _range.start.round() ||
-                            e.round() != _range.end.round()) {
-                          Haptics.selection();
-                        }
-                        setState(() => _range = RangeValues(s, e));
-                      },
-              ),
+              const SizedBox(height: 10),
               Text(
                 'Up to ${maxRingtoneSeconds.round()} seconds. It fades in and out so it never starts with a jolt.',
                 style: TextStyle(color: context.pop.muted, fontSize: 12),

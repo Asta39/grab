@@ -48,7 +48,7 @@ class Morph extends StatelessWidget {
       // OpenContainer's Material doesn't pick up the theme's text colour, so
       // titles went dark-on-dark in dark mode. Hand it the right one.
       closedBuilder: (context, open) => DefaultTextStyle.merge(
-        style: TextStyle(color: context.pop.text),
+        style: TextStyle(color: context.pop.text, fontFamily: Pop.font),
         child: IconTheme.merge(
           data: IconThemeData(color: context.pop.text),
           child: builder(context, () {

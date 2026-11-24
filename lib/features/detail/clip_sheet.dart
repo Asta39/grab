@@ -8,10 +8,11 @@ import 'package:share_plus/share_plus.dart';
 import '../../core/theme/pop_theme.dart';
 import '../../core/utils/haptics.dart';
 import '../../core/widgets/pop_widgets.dart';
-import '../../data/engine/media_info.dart';
+import '../../core/widgets/toasts.dart';
 import '../club/buddy.dart';
 import '../club/game.dart';
 import '../library/library_items.dart';
+import 'clip_editor.dart';
 import 'clip_maker.dart';
 
 enum ClipKind { gif, sticker }
@@ -46,6 +47,7 @@ class _ClipSheetState extends ConsumerState<_ClipSheet> {
   var _kind = ClipKind.gif;
   var _busy = false;
   String? _made;
+  var _adding = false;
   Object? _error;
 
   @override
@@ -98,10 +100,44 @@ class _ClipSheetState extends ConsumerState<_ClipSheet> {
     }
   }
 
+  /// Adds the sticker to the "Grab stickers" pack in WhatsApp.
+  Future<void> _addToWhatsApp(String path) async {
+    setState(() => _adding = true);
+    final r = await const MethodChannel(
+      'grab/stickers',
+    ).invokeMethod<String>('addToWhatsApp', {'path': path});
+    if (!mounted) return;
+    setState(() => _adding = false);
+    switch (r) {
+      case 'added':
+        Haptics.success();
+        Buddy.say('Sticker added! 🎉');
+        popToast(
+          'In your WhatsApp stickers',
+          icon: Icons.check_circle_rounded,
+          detail: 'Open the sticker tray and look for "Grab stickers".',
+        );
+      case 'cancelled':
+        break;
+      case 'noWhatsApp':
+        popToast(
+          "WhatsApp isn't installed",
+          icon: Icons.info_rounded,
+          detail: 'You can still share the sticker as an image.',
+        );
+      default:
+        Haptics.error();
+        popToast(
+          "Couldn't add the sticker",
+          error: true,
+          detail: r?.replaceFirst('error:', ''),
+        );
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final d = _duration;
-    final len = _range.end - _range.start;
     final made = _made;
     return SafeArea(
       child: Padding(
@@ -151,8 +187,9 @@ class _ClipSheetState extends ConsumerState<_ClipSheet> {
                     color: context.pop.card,
                     child: Image.file(
                       File(made),
-                      height: 200,
+                      height: 240,
                       fit: BoxFit.contain,
+                      gaplessPlayback: true,
                     ),
                   ),
                 ),
@@ -160,46 +197,23 @@ class _ClipSheetState extends ConsumerState<_ClipSheet> {
             else if (d == null && _error == null)
               const Center(child: CircularProgressIndicator())
             else if (d != null) ...[
-              Row(
-                children: [
-                  Text(
-                    clockLabel(_range.start),
-                    style: const TextStyle(fontWeight: FontWeight.w700),
-                  ),
-                  const Spacer(),
-                  PopTag('${len.toStringAsFixed(1)} s'),
-                  const Spacer(),
-                  Text(
-                    clockLabel(_range.end),
-                    style: const TextStyle(fontWeight: FontWeight.w700),
-                  ),
-                ],
+              ClipEditor(
+                path: widget.item.path,
+                poster: widget.item.thumbnail,
+                duration: d,
+                maxLength: _kind.max,
+                initialLength: 3,
+                lengths: _kind == ClipKind.gif
+                    ? const [2, 3, 5, 10]
+                    : const [2, 3, 6],
+                look: _kind == ClipKind.gif ? ClipLook.video : ClipLook.square,
+                onChanged: (s, e) => _range = RangeValues(s, e),
               ),
-              RangeSlider(
-                min: 0,
-                max: d,
-                divisions: (d * 2).round().clamp(1, 14400),
-                values: _range,
-                onChanged: _busy
-                    ? null
-                    : (v) {
-                        var s = v.start, e = v.end;
-                        if (e - s > _kind.max) {
-                          if (s != _range.start) {
-                            e = s + _kind.max;
-                          } else {
-                            s = e - _kind.max;
-                          }
-                        }
-                        if (e - s < 0.5) return;
-                        Haptics.selection();
-                        setState(() => _range = RangeValues(s, e));
-                      },
-              ),
+              const SizedBox(height: 10),
               Text(
                 _kind == ClipKind.gif
                     ? 'Up to 10 seconds, silent and looping.'
-                    : 'Up to 6 seconds, 512 × 512. Share it to WhatsApp and it lands as a sticker.',
+                    : 'Up to 6 seconds, 512 × 512, silent and looping.',
                 style: TextStyle(color: context.pop.muted, fontSize: 12),
               ),
             ],
@@ -222,12 +236,27 @@ class _ClipSheetState extends ConsumerState<_ClipSheet> {
                 style: TextStyle(color: context.pop.muted),
               ),
               const SizedBox(height: 12),
-              PopButton(
-                label: 'Share ${_kind.label}',
-                icon: Icons.ios_share_rounded,
-                onPressed: () =>
-                    shareAndCount(ref, ShareParams(files: [XFile(made)])),
-              ),
+              if (_kind == ClipKind.sticker && Platform.isAndroid) ...[
+                PopButton(
+                  label: 'Add to WhatsApp stickers',
+                  icon: Icons.add_reaction_rounded,
+                  busy: _adding,
+                  onPressed: _adding ? null : () => _addToWhatsApp(made),
+                ),
+                const SizedBox(height: 8),
+                TextButton.icon(
+                  onPressed: () =>
+                      shareAndCount(ref, ShareParams(files: [XFile(made)])),
+                  icon: const Icon(Icons.ios_share_rounded),
+                  label: const Text('Share as an image instead'),
+                ),
+              ] else
+                PopButton(
+                  label: 'Share ${_kind.label}',
+                  icon: Icons.ios_share_rounded,
+                  onPressed: () =>
+                      shareAndCount(ref, ShareParams(files: [XFile(made)])),
+                ),
               const SizedBox(height: 8),
               TextButton.icon(
                 onPressed: () {

@@ -52,7 +52,9 @@ Grab runs [yt-dlp](https://github.com/yt-dlp/yt-dlp) and [FFmpeg](https://ffmpeg
 - **A page for each download:** preview, every file it produced, play, share, delete or download again
 - **Extract audio later** from a saved video, without fetching the link again
 - **Background audio player** with lock-screen controls and a mini player
-- **Ringtone maker:** cut up to 40 seconds of any file and set it as your ringtone
+- **Ringtone maker:** pick up to 40 seconds, hear it before you save, and set it as your ringtone
+- **GIFs and stickers:** turn a moment from any video into a looping GIF or a sticker that goes straight into a "Grab stickers" pack in WhatsApp
+- **Precise clip editor:** a live preview of the part, a zoomed trim bar in tenths of a second and a whole-video overview to jump around
 - **Line-art covers** for audio files, 50 illustrations that never repeat back to back
 
 ### Experience
@@ -63,25 +65,44 @@ Grab runs [yt-dlp](https://github.com/yt-dlp/yt-dlp) and [FFmpeg](https://ffmpeg
 - **Fits any screen:** the layout scales to your screen size and Display size setting
 - **Permissions explained first:** a short welcome tells you why before Android asks
 
+### Grab Club and fun
+- **Streaks, XP, levels and 24 badges**, with a Playful mode switch to turn it all off
+- **The Grab buddy** on the dock, with hats drawn in every mood, reactions and a weekly recap
+- **Make it yours:** celebrations, sound packs, animated docks and cover styles to earn
+- **Grab Pal:** find anything in your library by describing it
+- **Grab Wrapped**, a home screen widget and shake to grab
+- **Back up your progress** to a file and restore it on a new phone
+
 ### Settings
 - Default mode and quality, video container (MP4, MKV, WEBM) and audio format (MP3, M4A, Opus, FLAC)
 - **Save folder:** Download, Movies or Music, with your own folder name
 - **File names:** a template such as `{title} - {site}`
 - **Storage:** how much space downloads use, and clearing failed ones
 - **Always-current engine:** yt-dlp updates itself daily, so site changes don't need a new app release
-- **In-app updates:** Grab checks GitHub releases and installs new versions over the old one, keeping everything
+- **In-app updates:** Grab checks GitHub releases and installs new versions over the old one, keeping everything, with a What's new tour
+- **Report a problem or suggest a feature** right from Settings, with optional diagnostics
 
 ## Screenshots
 
 <table>
   <tr>
-    <td align="center"><img src="docs/screenshots/home.png" width="250" alt="Home"><br><b>Paste a link</b><br><sub>Or tap Grab it on a copied link</sub></td>
+    <td align="center"><img src="docs/screenshots/home.png" width="250" alt="Home"><br><b>Paste a link</b><br><sub>Your buddy, streak and a copied-link offer</sub></td>
     <td align="center"><img src="docs/screenshots/trim.png" width="250" alt="Choose format with the trim bar"><br><b>Preview and trim</b><br><sub>See exactly what you keep</sub></td>
     <td align="center"><img src="docs/screenshots/downloads.png" width="250" alt="Downloads with live progress"><br><b>Live progress</b><br><sub>Percent, speed, time left; pause any time</sub></td>
   </tr>
   <tr>
     <td align="center"><img src="docs/screenshots/library.png" width="250" alt="Library grouped by platform"><br><b>Library</b><br><sub>Sorted, grouped, with line-art covers</sub></td>
-    <td align="center"><img src="docs/screenshots/detail.png" width="250" alt="A download's page"><br><b>Every download, its own page</b><br><sub>Play, share, extract audio, ringtone</sub></td>
+    <td align="center"><img src="docs/screenshots/clip.png" width="250" alt="GIF and sticker editor"><br><b>GIFs and stickers</b><br><sub>Pick the part, preview it, add to WhatsApp</sub></td>
+    <td align="center"><img src="docs/screenshots/ringtone.png" width="250" alt="Ringtone editor"><br><b>Ringtones</b><br><sub>Hear the part before you save it</sub></td>
+  </tr>
+  <tr>
+    <td align="center"><img src="docs/screenshots/club.png" width="250" alt="Trophies"><br><b>Grab Club</b><br><sub>Levels, streaks and 24 badges</sub></td>
+    <td align="center"><img src="docs/screenshots/customize.png" width="250" alt="Make it yours"><br><b>Make it yours</b><br><sub>Hats, docks, sounds and confetti</sub></td>
+    <td align="center"><img src="docs/screenshots/pal.png" width="250" alt="Grab Pal"><br><b>Grab Pal</b><br><sub>Describe it, find it</sub></td>
+  </tr>
+  <tr>
+    <td align="center"><img src="docs/screenshots/whatsnew.png" width="250" alt="What's new"><br><b>What's new</b><br><sub>A short tour after each update</sub></td>
+    <td align="center"><img src="docs/screenshots/feedback.png" width="250" alt="Suggest a feature"><br><b>Feedback</b><br><sub>Report a problem or suggest a feature</sub></td>
     <td align="center"><img src="docs/screenshots/about.png" width="250" alt="About and updates"><br><b>About and updates</b><br><sub>New versions install over the old one</sub></td>
   </tr>
 </table>

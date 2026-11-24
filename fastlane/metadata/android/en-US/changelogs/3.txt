@@ -1,3 +1,5 @@
+- A clip editor with live preview and fine trimming
+- Stickers go straight into WhatsApp
 - A What's new tour after updating
 - Report a problem and Suggest a feature, in Settings
 - Back up and restore your Grab Club progress

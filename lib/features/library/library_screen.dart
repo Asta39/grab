@@ -256,6 +256,7 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen> {
                             avatar: const Icon(Icons.sort_rounded, size: 18),
                             label: Text(_sort.label),
                             labelStyle: TextStyle(
+                              fontFamily: Pop.font,
                               fontWeight: FontWeight.w600,
                               color: context.pop.text,
                             ),
