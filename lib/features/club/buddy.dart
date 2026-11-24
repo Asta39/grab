@@ -228,9 +228,11 @@ class _Bubble extends StatelessWidget {
     child: Text(
       text,
       style: const TextStyle(
+        fontFamily: Pop.font,
         color: Pop.ink,
         fontWeight: FontWeight.w800,
         fontSize: 13,
+        decoration: TextDecoration.none,
       ),
     ),
   );

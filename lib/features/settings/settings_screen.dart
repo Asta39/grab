@@ -7,6 +7,9 @@ import 'package:package_info_plus/package_info_plus.dart';
 import 'package:permission_handler/permission_handler.dart';
 
 import '../../app/providers.dart';
+import '../welcome/whats_new.dart';
+import 'feedback.dart';
+import '../club/backup.dart';
 import '../club/club_widgets.dart';
 import '../club/customize.dart';
 import '../club/fun.dart';
@@ -19,6 +22,7 @@ import '../../core/utils/permissions.dart';
 import '../../core/utils/platform.dart';
 import '../../core/widgets/dock_inset.dart';
 import '../../core/widgets/pop_widgets.dart';
+import '../../core/widgets/support.dart';
 import '../../core/widgets/toasts.dart';
 import '../../data/db/app_database.dart';
 import '../../data/engine/media_info.dart';
@@ -90,6 +94,8 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
               ),
             ),
             const SizedBox(height: 20),
+            const SupportBanner(),
+            const SizedBox(height: 24),
             const PopSection('Downloads'),
             _Group(
               children: [
@@ -282,6 +288,34 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                       ? 'Add Groq key'
                       : 'Groq · on',
                   onTap: () => editGroqKey(context, ref),
+                ),
+                _Row(
+                  label: 'Back up progress',
+                  value: 'Save to a file',
+                  onTap: () => exportGrabClub(ref),
+                ),
+                _Row(
+                  label: 'Restore a backup',
+                  onTap: () => importGrabClub(context, ref),
+                ),
+              ],
+            ),
+            const SizedBox(height: 16),
+            const PopSection('Help'),
+            _Group(
+              children: [
+                _Row(
+                  label: "What's new",
+                  value: 'In $whatsNewRelease',
+                  onTap: () => openWhatsNew(context),
+                ),
+                _Row(
+                  label: 'Report a problem',
+                  onTap: () => showFeedback(context, FeedbackKind.problem),
+                ),
+                _Row(
+                  label: 'Suggest a feature',
+                  onTap: () => showFeedback(context, FeedbackKind.idea),
                 ),
               ],
             ),

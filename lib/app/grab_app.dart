@@ -10,6 +10,7 @@ import 'package:sensors_plus/sensors_plus.dart';
 import 'package:toastification/toastification.dart';
 
 import '../core/theme/pop_theme.dart';
+import '../core/utils/error_log.dart';
 import '../core/utils/haptics.dart';
 import '../core/utils/links.dart';
 import '../core/utils/sfx.dart';
@@ -19,6 +20,7 @@ import '../core/widgets/dock_inset.dart';
 import '../core/widgets/clipboard_offer.dart';
 import '../features/library/audio_player_screen.dart';
 import '../core/widgets/pop_widgets.dart';
+import '../core/widgets/support.dart';
 import '../core/widgets/toasts.dart';
 import '../data/db/app_database.dart';
 import '../features/club/buddy.dart';
@@ -34,6 +36,7 @@ import '../features/home/home_screen.dart';
 import '../features/library/library_screen.dart';
 import '../features/settings/settings_screen.dart';
 import '../features/welcome/welcome_screen.dart';
+import '../features/welcome/whats_new.dart';
 import 'providers.dart';
 
 class GrabApp extends ConsumerWidget {
@@ -85,6 +88,17 @@ class _FirstRunState extends ConsumerState<_FirstRun> {
   late var _seen = WelcomeScreen.seen(ref.read(sharedPrefsProvider));
 
   @override
+  void initState() {
+    super.initState();
+    // People who used an older Grab see "What's new" once; new installs don't.
+    if (takeWhatsNew(ref.read(sharedPrefsProvider), returning: _seen)) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) openWhatsNew(context);
+      });
+    }
+  }
+
+  @override
   Widget build(BuildContext context) {
     return AnimatedSwitcher(
       duration: Pop.medium,
@@ -123,6 +137,9 @@ class _ShellState extends ConsumerState<_Shell> with WidgetsBindingObserver {
   DateTime _lastJolt = DateTime(0);
   DateTime _lastShake = DateTime(0);
   var _tab = 0;
+
+  /// The once-a-day "support Grab" card above the dock.
+  var _support = false;
   String? _lastOffered;
   ({String link, String platform})? _offer;
   Timer? _offerTimer;
@@ -141,6 +158,9 @@ class _ShellState extends ConsumerState<_Shell> with WidgetsBindingObserver {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _offerClipboard();
       _updateWidget();
+      if (takeDailySupport(ref.read(sharedPrefsProvider))) {
+        setState(() => _support = true);
+      }
     });
     Buddy.mood(BuddyMood.wave);
     // Quick Settings tile: open Grab and fetch whatever link is copied.
@@ -349,6 +369,31 @@ class _ShellState extends ConsumerState<_Shell> with WidgetsBindingObserver {
         .catchError((_) {});
   }
 
+  Widget _offerSwitcher() => AnimatedSwitcher(
+    duration: Pop.medium,
+    switchInCurve: Curves.easeOutBack,
+    switchOutCurve: Curves.easeInCubic,
+    transitionBuilder: (child, a) => FadeTransition(
+      opacity: a,
+      child: SlideTransition(
+        position: Tween(
+          begin: const Offset(0, 0.4),
+          end: Offset.zero,
+        ).animate(a),
+        child: child,
+      ),
+    ),
+    child: _offer == null
+        ? const SizedBox.shrink()
+        : ClipboardOffer(
+            key: ValueKey(_offer!.link),
+            platform: _offer!.platform,
+            link: _offer!.link,
+            onGrab: _grabOffer,
+            onDismiss: _dismissOffer,
+          ),
+  );
+
   /// The buddy reacts, when playful mode and the buddy are on.
   void _say(BuddyLine l) {
     final fun = ref.read(funProvider);
@@ -393,6 +438,9 @@ class _ShellState extends ConsumerState<_Shell> with WidgetsBindingObserver {
         Haptics.error();
         Buddy.mood(BuddyMood.sad);
         _say(lineForFailure());
+        ErrorLog.record(
+          'Download failed (${j.site ?? 'unknown site'}): ${j.error ?? 'no reason given'}',
+        );
         popToast(
           'Download failed',
           icon: Icons.error_rounded,
@@ -489,38 +537,37 @@ class _ShellState extends ConsumerState<_Shell> with WidgetsBindingObserver {
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              if (showBuddy)
-                Align(
-                  alignment: Alignment.centerRight,
-                  child: Padding(
-                    padding: const EdgeInsets.only(right: 8),
-                    child: DockBuddy(onTap: () => openPal(context)),
-                  ),
-                ),
-              AnimatedSwitcher(
-                duration: Pop.medium,
-                switchInCurve: Curves.easeOutBack,
-                switchOutCurve: Curves.easeInCubic,
-                transitionBuilder: (child, a) => FadeTransition(
-                  opacity: a,
-                  child: SlideTransition(
-                    position: Tween(
-                      begin: const Offset(0, 0.4),
-                      end: Offset.zero,
-                    ).animate(a),
-                    child: child,
-                  ),
-                ),
-                child: _offer == null
-                    ? const SizedBox.shrink()
-                    : ClipboardOffer(
-                        key: ValueKey(_offer!.link),
-                        platform: _offer!.platform,
-                        link: _offer!.link,
-                        onGrab: _grabOffer,
-                        onDismiss: _dismissOffer,
+              // The support card shares a row with the buddy, right above the
+              // dock; a copied-link offer then floats above that row, and drops
+              // back down when the card goes.
+              if (_support) ...[
+                _offerSwitcher(),
+                const SizedBox(height: 10),
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.end,
+                  children: [
+                    Expanded(
+                      child: SupportCard(
+                        onDismiss: () => setState(() => _support = false),
                       ),
-              ),
+                    ),
+                    if (showBuddy) ...[
+                      const SizedBox(width: 6),
+                      DockBuddy(onTap: () => openPal(context)),
+                    ],
+                  ],
+                ),
+              ] else ...[
+                if (showBuddy)
+                  Align(
+                    alignment: Alignment.centerRight,
+                    child: Padding(
+                      padding: const EdgeInsets.only(right: 8),
+                      child: DockBuddy(onTap: () => openPal(context)),
+                    ),
+                  ),
+                _offerSwitcher(),
+              ],
               const SizedBox(height: 8),
               const MiniPlayer(),
             ],

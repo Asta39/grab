@@ -47,6 +47,13 @@
                 <category android:name="android.intent.category.LAUNCHER"/>
             </intent-filter>
         </activity>
+        <!-- "Grab stickers" pack for WhatsApp -->
+        <provider
+            android:name=".StickerProvider"
+            android:authorities="${applicationId}.stickers"
+            android:enabled="true"
+            android:exported="true"
+            android:readPermission="com.whatsapp.sticker.READ"/>
         <!-- Home screen widget: streak, buddy, and a grab button -->
         <receiver
             android:name=".GrabWidget"
@@ -113,6 +120,8 @@
 
          In particular, this is used by the Flutter engine in io.flutter.plugin.text.ProcessTextPlugin. -->
     <queries>
+        <package android:name="com.whatsapp"/>
+        <package android:name="com.whatsapp.w4b"/>
         <intent>
             <action android:name="android.intent.action.PROCESS_TEXT"/>
             <data android:mimeType="text/plain"/>

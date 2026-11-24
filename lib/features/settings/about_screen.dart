@@ -9,6 +9,7 @@ import '../../core/theme/pop_theme.dart';
 import '../../core/update/app_update.dart';
 import '../../core/utils/haptics.dart';
 import '../../core/widgets/pop_widgets.dart';
+import '../../core/widgets/release_notes.dart';
 import '../../core/widgets/toasts.dart';
 import '../../data/engine/media_info.dart';
 
@@ -388,18 +389,13 @@ class _AboutScreenState extends State<AboutScreen> {
           if (_stage == _Stage.available && r!.notes.isNotEmpty) ...[
             const SizedBox(height: 12),
             Container(
-              constraints: const BoxConstraints(maxHeight: 180),
-              padding: const EdgeInsets.all(12),
+              constraints: const BoxConstraints(maxHeight: 280),
+              padding: const EdgeInsets.fromLTRB(16, 14, 16, 8),
               decoration: BoxDecoration(
                 color: context.pop.bg,
                 borderRadius: Pop.thumbRadius,
               ),
-              child: SingleChildScrollView(
-                child: Text(
-                  r.notes,
-                  style: const TextStyle(fontSize: 13, height: 1.35),
-                ),
-              ),
+              child: SingleChildScrollView(child: ReleaseNotes(r.notes)),
             ),
           ],
           if (_stage == _Stage.downloading) ...[

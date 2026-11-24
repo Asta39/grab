@@ -31,6 +31,14 @@ class DesktopEngine implements Engine {
 
   Future<void> _ensureReady() => _ready ??= _setup();
 
+  /// Full path of an FFmpeg tool ('ffmpeg' or 'ffprobe'), installing it first
+  /// if needed. Used by the GIF and sticker maker.
+  Future<String> tool(String name) async {
+    await _ensureReady();
+    final exe = _win ? '$name.exe' : name;
+    return _ffmpegDir == null ? exe : p.join(_ffmpegDir!, exe);
+  }
+
   Future<void> _setup() async {
     _bin = Directory(
       p.join((await getApplicationSupportDirectory()).path, 'bin'),

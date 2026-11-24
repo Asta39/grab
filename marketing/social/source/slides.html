@@ -1,0 +1,204 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<style>
+@font-face { font-family: Outfit; src: url('file:///Users/ianlove/Grab/assets/fonts/Outfit-Variable.ttf'); font-weight: 100 900; }
+:root { --H: 1350px; --yellow:#FFD84D; --ink:#141414; --muted:#6E6E73; }
+body.tt { --H: 1920px; }
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { width: 1080px; font-family: Outfit, sans-serif; color: var(--ink); -webkit-font-smoothing: antialiased; }
+.slide {
+  position: relative; width: 1080px; height: var(--H); overflow: hidden;
+  background: #F1F1EF;
+  display: flex; flex-direction: column; align-items: center;
+}
+/* Paper grain like the reference */
+.slide::after {
+  content: ""; position: absolute; inset: 0; pointer-events: none; opacity: .32; mix-blend-mode: multiply;
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='300' height='300'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='2' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 0.5  0 0 0 0 0.5  0 0 0 0 0.5  0 0 0 .55 0'/></filter><rect width='100%' height='100%' filter='url(%23n)'/></svg>");
+}
+.brand { display:flex; align-items:center; gap:14px; font-weight:800; font-size:44px; letter-spacing:-.02em; }
+.brand img { width:58px; height:58px; border-radius:15px; }
+h1 { font-weight:800; font-size:86px; line-height:1.0; letter-spacing:-.035em; text-align:center; }
+h2 { font-weight:800; font-size:72px; line-height:1.02; letter-spacing:-.035em; text-align:center; }
+.sub { font-size:30px; font-weight:600; text-align:center; line-height:1.3; }
+.fine { font-size:22px; color:var(--muted); font-weight:500; text-align:center; }
+.grad { background: linear-gradient(90deg,#141414,#5B4A00); -webkit-background-clip:text; color:transparent; }
+.pills { display:flex; flex-wrap:wrap; justify-content:center; gap:10px; max-width:900px; }
+.pill { font-size:20px; font-weight:600; padding:8px 18px; border-radius:999px; background:#fff; border:1.5px solid #E2E2DF; color:#3A3A3C; }
+.pill.y { background:var(--yellow); border-color:var(--yellow); color:var(--ink); }
+.card { border-radius:38px; overflow:hidden; position:relative; color:#fff; padding:30px 30px 0; display:flex; flex-direction:column; align-items:center; text-align:center; }
+.card .k { font-size:15px; letter-spacing:.14em; text-transform:uppercase; font-weight:700; opacity:.8; }
+.card .t { font-size:34px; font-weight:800; letter-spacing:-.02em; line-height:1.08; margin-top:8px; }
+.card img.ui { width:100%; border-radius:22px 22px 0 0; margin-top:22px; display:block; box-shadow:0 -8px 30px rgba(0,0,0,.25); }
+.g1 { background: linear-gradient(160deg,#FFD84D 0%,#FF9F1C 100%); color:var(--ink); }
+.g2 { background: linear-gradient(160deg,#2B2B2E 0%,#5A3FD1 100%); }
+.g3 { background: linear-gradient(160deg,#FF5E7E 0%,#FF8A3D 100%); }
+.g4 { background: linear-gradient(160deg,#1E90FF 0%,#22C1A6 100%); }
+.g5 { background: linear-gradient(160deg,#141414 0%,#3A3110 100%); }
+.g6 { background: linear-gradient(160deg,#B620E0 0%,#6A3BFF 100%); }
+.phone { border-radius:56px; box-shadow: 0 40px 70px -30px rgba(0,0,0,.45); }
+.photo { position:absolute; left:0; right:0; bottom:0; width:100%; object-fit:cover; }
+.cap { font-size:19px; color:#3A3A3C; text-align:left; line-height:1.35; margin-top:14px; }
+.cap b { color:var(--ink); }
+
+.card { padding:34px 34px 34px; }
+.card img.ui { border-radius:22px; box-shadow:0 18px 40px -16px rgba(0,0,0,.45); margin-top:24px; }
+.wave { display:flex; align-items:center; gap:6px; height:110px; margin-top:22px; position:relative; padding:0 18px; }
+.wave i { display:block; width:9px; border-radius:6px; background:rgba(20,20,20,.85); }
+.wave .sel { position:absolute; top:-8px; bottom:-8px; border:5px solid #141414; border-radius:14px; }
+.ripple { position:relative; width:170px; height:170px; display:grid; place-items:center; }
+.ripple span { position:absolute; inset:0; border-radius:50%; border:3px solid rgba(255,216,77,.55); }
+.ripple span:nth-child(2) { inset:24px; border-color:rgba(255,216,77,.8); }
+.ripple b { width:70px; height:110px; border-radius:18px; background:#FFD84D; box-shadow:0 0 0 6px rgba(255,216,77,.25); }
+</style>
+</head>
+<body>
+
+<!-- 1. Cover -->
+<section class="slide" id="s1" style="background:#d8dadc">
+  <div style="height:calc(var(--H)*0.06)"></div>
+  <div class="brand"><img src="file:///Users/ianlove/Grab/assets/brand/icon.png">Grab</div>
+  <div style="height:28px"></div>
+  <h1>Paste a link.<br>Get the file.</h1>
+  <div style="height:18px"></div>
+  <p class="fine"><b style="color:#141414">Free & open source</b> · Android, Mac & Windows</p>
+  <img src="gen/hands_grab.png" style="position:absolute; bottom:calc(var(--H)*-0.02); left:50%; transform:translateX(-50%); width:calc(var(--H)*0.62); -webkit-mask-image:radial-gradient(ellipse 50% 60% at 50% 62%,#000 62%,transparent 100%);">
+  <div class="pills" style="position:absolute; bottom:calc(var(--H)*0.035); padding:0 40px; z-index:2">
+    <span class="pill y">TikTok</span><span class="pill y">YouTube</span><span class="pill y">Instagram</span><span class="pill y">Pinterest</span><span class="pill">X</span><span class="pill">Facebook</span><span class="pill">Vimeo</span><span class="pill">SoundCloud</span><span class="pill">+1,800 sites</span>
+  </div>
+</section>
+
+<!-- 2. Bento: four ways to save -->
+<section class="slide" id="s2" style="padding:0 48px; gap:22px; justify-content:center">
+  <div class="card g1" style="width:984px">
+    <div class="k">Choose how you save</div>
+    <div class="t">Video + audio, video, audio only<br>or just the subtitles</div>
+    <img class="ui" src="crops/modes.png" style="width:86%">
+  </div>
+  <div style="display:flex; gap:22px; width:984px; align-items:stretch">
+    <div class="card g2" style="flex:1; justify-content:space-between">
+      <div><div class="k">Trim</div><div class="t">Keep only<br>the part you love</div></div>
+      <img class="ui" src="crops/trimbar.png">
+    </div>
+    <div class="card g3" style="flex:1; justify-content:space-between">
+      <div><div class="k">Never gives up</div><div class="t">Pause, resume,<br>auto-retry</div></div>
+      <img class="ui" src="crops/dlcard.png">
+    </div>
+  </div>
+  <div class="card g4" style="width:984px">
+    <div class="k">Everywhere</div>
+    <div class="t">Share to Grab, copy a link, or tap the tile</div>
+    <img class="ui" src="crops/clipcard.png" style="width:82%">
+  </div>
+</section>
+
+<!-- 3. Trim hero -->
+<section class="slide" id="s3">
+  <div style="height:calc(var(--H)*0.075)"></div>
+  <h2>Pick the part<br>you love.</h2>
+  <div style="height:22px"></div>
+  <p class="sub" style="color:#3A3A3C; font-weight:500; font-size:28px">Play the video, drag the yellow ends,<br>and Grab saves just that clip.</p>
+  <img class="phone" src="file:///Users/ianlove/Grab/docs/screenshots/trim.png" style="position:absolute; bottom:calc(var(--H)*-0.20); width:620px">
+</section>
+
+<!-- 4. Lifestyle: Mac -->
+<section class="slide" id="s4" style="background:#EDE7DD">
+  <img class="photo" src="gen/desk_grab.png" style="height:calc(var(--H)*0.74); object-position:center 40%">
+  <div style="height:calc(var(--H)*0.06)"></div>
+  <h2>Now on your<br>Mac & PC.</h2>
+  <div style="height:18px"></div>
+  <p class="sub" style="font-weight:500; color:#3A3A3C; font-size:27px">Copy a link anywhere. Grab offers to fetch it.</p>
+</section>
+
+<!-- 5. Bento: library -->
+<section class="slide" id="s5" style="padding:0 48px; gap:26px; justify-content:center">
+  <h2 style="font-size:64px">Your library,<br>beautifully kept.</h2>
+  <div style="display:flex; gap:22px; width:984px; height:min(calc(var(--H)*0.6), 850px)">
+    <div class="card g5" style="flex:1.2; padding-bottom:0">
+      <div class="k">Library</div><div class="t">Sorted, grouped<br>by platform</div>
+      <div style="flex:1; min-height:0; width:100%; margin-top:24px; border-radius:22px 22px 0 0; overflow:hidden; box-shadow:0 -10px 30px rgba(0,0,0,.35)">
+        <img src="crops/libgrid.png" style="width:100%; display:block">
+      </div>
+    </div>
+    <div style="flex:1; display:flex; flex-direction:column; gap:22px">
+      <div class="card g6" style="flex:1.15; justify-content:center">
+        <div class="k">Audio covers</div><div class="t">50 line-art<br>illustrations</div>
+        <div style="display:grid; grid-template-columns:repeat(3,1fr); gap:10px 14px; margin-top:20px; width:100%">
+          <img src="file:///Users/ianlove/Grab/assets/art/audio_01.png" style="width:100%; filter:invert(1)"><img src="file:///Users/ianlove/Grab/assets/art/audio_10.png" style="width:100%; filter:invert(1)"><img src="file:///Users/ianlove/Grab/assets/art/audio_24.png" style="width:100%; filter:invert(1)">
+          <img src="file:///Users/ianlove/Grab/assets/art/audio_05.png" style="width:100%; filter:invert(1)"><img src="file:///Users/ianlove/Grab/assets/art/audio_33.png" style="width:100%; filter:invert(1)"><img src="file:///Users/ianlove/Grab/assets/art/audio_50.png" style="width:100%; filter:invert(1)">
+        </div>
+      </div>
+      <div class="card g1" style="flex:1; justify-content:center">
+        <div class="k">Ringtones</div><div class="t">Cut any clip<br>into a ringtone</div>
+        <div class="wave">
+          <i style="height:26px"></i><i style="height:48px"></i><i style="height:70px"></i><i style="height:40px"></i><i style="height:92px"></i><i style="height:60px"></i><i style="height:104px"></i><i style="height:74px"></i><i style="height:50px"></i><i style="height:88px"></i><i style="height:36px"></i><i style="height:64px"></i><i style="height:98px"></i><i style="height:56px"></i><i style="height:30px"></i><i style="height:72px"></i><i style="height:44px"></i><i style="height:84px"></i><i style="height:52px"></i><i style="height:28px"></i>
+          <div class="sel" style="left:110px; right:110px"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- 6. Every little detail -->
+<section class="slide" id="s6" style="align-items:stretch; padding:calc(var(--H)*0.055) 60px calc(var(--H)*0.05)">
+  <p style="font-size:20px; font-weight:600; color:#3A3A3C">Small but important</p>
+  <h2 style="text-align:left; font-size:64px; margin-top:8px"><span class="grad">Every little detail<br>makes it delightful</span></h2>
+  <p class="fine" style="text-align:left; margin-top:14px">Tiny touches that make saving faster, calmer and a little bit fun.</p>
+  <div style="flex:1; min-height:0; display:grid; grid-template-columns:1fr 1fr; grid-template-rows:1fr 1fr; gap:30px 24px; margin-top:38px">
+    <div style="display:flex; flex-direction:column"><div class="card g5" style="flex:1; justify-content:center; padding:26px"><img src="crops/dock.png" style="width:100%; border-radius:22px"></div>
+      <p class="cap"><b>Liquid dock.</b> A stretchy yellow blob glides between tabs.</p></div>
+    <div style="display:flex; flex-direction:column"><div class="card g1" style="flex:1; justify-content:center"><div style="font-size:76px; font-weight:800; letter-spacing:-.03em">2.3 MB/s</div><div style="font-size:24px; font-weight:700; margin-top:6px">65% · 3s left</div>
+      <div style="width:80%; height:12px; border-radius:6px; background:rgba(20,20,20,.15); margin-top:22px"><div style="width:65%; height:100%; border-radius:6px; background:#141414"></div></div></div>
+      <p class="cap"><b>Live progress.</b> Speed and time left on every download.</p></div>
+    <div style="display:flex; flex-direction:column"><div class="card g2" style="flex:1; justify-content:center"><div class="ripple"><span></span><span></span><b></b></div></div>
+      <p class="cap"><b>iPhone-like haptics.</b> Crisp taps, and a double-tap when it's saved.</p></div>
+    <div style="display:flex; flex-direction:column"><div class="card g4" style="flex:1; justify-content:center"><div style="font-size:18px; letter-spacing:.14em; text-transform:uppercase; font-weight:700; opacity:.85">Engine</div><div style="font-size:60px; font-weight:800; letter-spacing:-.03em; margin-top:6px">yt-dlp</div><div style="font-size:30px; font-weight:700">2026.10.26</div>
+      <div class="pill" style="margin-top:18px; background:rgba(255,255,255,.2); border-color:transparent; color:#fff">✓ Updated today</div></div>
+      <p class="cap"><b>Always current.</b> The engine updates itself, every day.</p></div>
+  </div>
+</section>
+
+<!-- 7. Lifestyle: listen -->
+<section class="slide" id="s7" style="background:#E9E1D4">
+  <img class="photo" src="gen/couch_grab.png" style="height:calc(var(--H)*0.76); object-position:center 30%">
+  <div style="height:calc(var(--H)*0.06)"></div>
+  <h2>Save it once.<br>Enjoy it anywhere.</h2>
+  <div style="height:18px"></div>
+  <p class="sub" style="font-weight:500; color:#3A3A3C; font-size:27px">Offline, ad-free, with lock-screen controls.</p>
+</section>
+
+<!-- 8. Privacy -->
+<section class="slide" id="s8" style="background:#141414; color:#F5F5F7; justify-content:center; align-items:flex-start; padding:0 80px">
+  <p style="color:var(--yellow); font-size:22px; font-weight:700; letter-spacing:.12em; text-transform:uppercase">Privacy</p>
+  <h1 style="text-align:left; font-size:110px; margin-top:20px">No account.<br>No ads.<br>No tracking.</h1>
+  <p style="font-size:30px; color:#A1A1A6; margin-top:36px; line-height:1.35; max-width:860px">Grab only talks to the sites you download from. Your files and history never leave your device. The code is open for anyone to read.</p>
+</section>
+
+<!-- 9. Big number -->
+<section class="slide" id="s9" style="background:var(--yellow); justify-content:center">
+  <p style="font-size:300px; font-weight:900; letter-spacing:-.06em; line-height:.85">1,800+</p>
+  <p style="font-size:52px; font-weight:800; letter-spacing:-.03em; margin-top:26px">sites. One paste.</p>
+  <div class="pills" style="margin-top:44px">
+    <span class="pill">TikTok</span><span class="pill">YouTube</span><span class="pill">Instagram</span><span class="pill">Pinterest</span><span class="pill">X</span><span class="pill">Facebook</span><span class="pill">Vimeo</span><span class="pill">SoundCloud</span><span class="pill">Reddit</span><span class="pill">Twitch</span>
+  </div>
+</section>
+
+<!-- 10. CTA -->
+<section class="slide" id="s10">
+  <div style="height:calc(var(--H)*0.07)"></div>
+  <div class="brand"><img src="file:///Users/ianlove/Grab/assets/brand/icon.png">Grab</div>
+  <div style="height:26px"></div>
+  <h2>Get it free on</h2>
+  <p style="font-size:44px; font-weight:700; margin-top:14px; letter-spacing:-.02em">asta39.github.io/grab</p>
+  <p class="fine" style="margin-top:14px">Android · macOS · Windows · Open source</p>
+  <div style="position:absolute; bottom:calc(var(--H)*-0.05); display:flex; gap:20px; align-items:flex-end">
+    <img src="file:///Users/ianlove/Grab/docs/screenshots/library.png" style="width:360px; transform:rotate(-6deg) translateY(40px)">
+    <img src="file:///Users/ianlove/Grab/docs/screenshots/home.png" style="width:420px; z-index:2">
+    <img src="file:///Users/ianlove/Grab/docs/screenshots/downloads.png" style="width:360px; transform:rotate(6deg) translateY(40px)">
+  </div>
+</section>
+
+</body>
+</html>
